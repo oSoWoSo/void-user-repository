@@ -131,7 +131,9 @@ jobs:
           echo
 
           for pkg in ${PKGS}; do
-            echo -e "\n==> Building ${pkg}\n"
+            echo ''
+            echo "==> Building ${pkg}"
+            echo ''
             if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
               echo "!! build failed for ${pkg}"
               failed="${failed} ${pkg}"
