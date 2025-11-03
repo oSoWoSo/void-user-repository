@@ -100,7 +100,15 @@ jobs:
       - name: Merge templates and edit shlibs
         run: |
           echo "==> copying templates..."
-          cp -rv extra/srcpkgs/* void-packages/srcpkgs/
+          for template in extra/srcpkgs/*; do
+            template_name=$(basename "$template")
+            original="void-packages/srcpkgs/$template_name"
+            if [ -d "$original" ]; then
+              echo "Removing old template directory: $template
+              rm -rf "$original" || echo "Cannot remove $original"
+              cp -rfv extra/srcpkgs/$template void-packages/srcpkgs/
+            fi
+          done
 
           SHLIBS_FILE="void-packages/common/shlibs"
           APPEND_FILE="extra/shlibs_append"
@@ -125,11 +133,11 @@ jobs:
             done < "$APPEND_FILE"
           fi
 
-          echo "=> applying inline edits..."
-          if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
-              echo "   - removing void-packages/srcpkgs/hyprutils/patches"
-              rm -rf void-packages/srcpkgs/hyprutils/patches
-          fi
+          #echo "=> applying inline edits..."
+          #if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
+          #    echo "   - removing void-packages/srcpkgs/hyprutils/patches"
+          #    rm -rf void-packages/srcpkgs/hyprutils/patches
+          #fi
 
       - name: Prepare masterdir
         run: |
