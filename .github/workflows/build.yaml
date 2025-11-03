@@ -3,7 +3,8 @@ name: build
 on:
   push:
     branches:
-        - master
+        #- master
+        - main
     paths:
         - 'srcpkgs/**'
   workflow_dispatch:
@@ -151,7 +152,7 @@ jobs:
 
           xbps-rindex -a *.xbps || true
           xbps-rindex -r "$PWD"
-          xbps-rindex -s --signedby "Encoded14 <linusken@tuta.io>" --privkey private.pem "$PWD"
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
           xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
           xbps-rindex -c "$PWD"
 
@@ -166,7 +167,7 @@ jobs:
         env:
             REPO_OWNER: ${{ github.repository_owner }}
             REPO_NAME: ${{ github.event.repository.name }}
-            ACCESS_GIT: ${{ secrets.ACCESS_GIT }}
+            TOKEN: ${{ secrets.TOKEN }}
             RESULT_NAME: ${{ matrix.config.arch }}
         run: |
           cd extra
@@ -174,7 +175,7 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           BRANCH="repository-${RESULT_NAME}"
-          REMOTE="https://$REPO_OWNER:${ACCESS_GIT}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+          REMOTE="https://$REPO_OWNER:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
           # Delete old binary repository, create new one
           git push "$REMOTE" -d "$BRANCH" || true
