@@ -1,0 +1,249 @@
+name: build 2
+
+on:
+  push:
+    branches:
+        #- master
+        - main
+    paths:
+        - 'srcpkgs/**'
+  workflow_dispatch:
+
+
+jobs:
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
+      options: --platform ${{ matrix.config.platform }} --privileged
+      volumes:
+        - /dev:/dev
+      env:
+        ARCH: '${{ matrix.config.arch }}'
+        BOOTSTRAP: '${{ matrix.config.host }}'
+        TEST: '${{ matrix.config.test }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
+          - { arch: aarch64,      host: x86_64,      libc: glibc, platform: linux/amd64, test: 0 }
+          - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
+          - { arch: aarch64-musl, host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 0 }
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Prepare container
+        run: |
+          # switch to repo-ci mirror
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          # install dependencies
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git git-lfs
+          # create non-root user
+          useradd -G xbuilder -M builder
+
+      - name: Checkout this repo
+        run: |
+          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
+          cd extra
+          git fetch --no-tags origin "${{ github.sha }}" --depth 1
+          git checkout --detach "${{ github.sha }}"
+
+      - name: Checkout void-packages
+        run: |
+          git clone https://github.com/void-linux/void-packages.git void-packages
+          cd void-packages
+          git checkout --detach master
+
+      - name: Merge templates and edit shlibs
+        run: |
+          echo "==> copying templates..."
+          for template in extra/srcpkgs/*; do
+            template_name=$(basename "$template")
+            original="void-packages/srcpkgs/$template_name"
+            if [ -d "$original" ]; then
+              echo "Removing old template directory: $template"
+              rm -rf "$original" || echo "Cannot remove $original"
+            fi
+            cp -rv $template void-packages/srcpkgs/
+          done
+
+          SHLIBS_FILE="void-packages/common/shlibs"
+          APPEND_FILE="extra/shlibs_append"
+          REMOVE_FILE="extra/shlibs_remove"
+
+          echo "==> updating common/shlibs..."
+          if [ -f "$REMOVE_FILE" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              grep -vF "$line" "$SHLIBS_FILE" > "$SHLIBS_FILE.tmp" && mv "$SHLIBS_FILE.tmp" "$SHLIBS_FILE"
+              echo "   - removed: $line"
+            done < "$REMOVE_FILE"
+          fi
+
+          if [ -f "$APPEND_FILE" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              if ! grep -qF "$line" "$SHLIBS_FILE"; then
+                echo "$line" >> "$SHLIBS_FILE"
+                echo "   + added: $line"
+              fi
+            done < "$APPEND_FILE"
+          fi
+
+          #echo "=> applying inline edits..."
+          #if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
+          #    echo "   - removing void-packages/srcpkgs/hyprutils/patches"
+          #    rm -rf void-packages/srcpkgs/hyprutils/patches
+          #fi
+
+      - name: Prepare masterdir
+        run: |
+          cd void-packages
+          chown -R builder:builder . &&
+          sudo -Eu builder common/travis/set_mirror.sh &&
+          sudo -Eu builder common/travis/prepare.sh &&
+          common/travis/fetch-xtools.sh
+
+      - name: Build
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          cd void-packages
+          pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n")
+          
+          if [ "$BOOTSTRAP" != "$ARCH" ]; then
+              arch="-a $ARCH"
+          fi
+
+          if [ "$TEST" = 1 ]; then
+              test="-Q"
+          fi
+
+          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
+          failed=""
+
+          echo "==> Build order with dependencies:"
+          echo "$PKGS"
+          echo
+
+          for pkg in ${PKGS}; do
+            echo ''
+            echo "==> Building ${pkg}"
+            echo ''
+            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+              echo "!! build failed for ${pkg}"
+              failed="${failed} ${pkg}"
+            fi
+          done
+
+          if [ -n "${failed}" ]; then
+            echo
+            echo "Failed builds:" >> $GITHUB_STEP_SUMMARY
+            for f in ${failed}; do
+                echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+      - name: Sign packages
+        env:
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+          XBPS_ARCH: ${{ matrix.target }}
+        working-directory: void-packages/hostdir/binpkgs/
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+
+          echo "==> writing private key to file..."
+          printf "%s\n" "$PRIV_KEY" > private.pem
+          chmod 600 private.pem
+
+          echo "==> merging free + nonfree"
+          if [ -d "nonfree" ]; then
+              mv nonfree/*.xbps . 2>/dev/null || true
+          fi
+
+          # Index and sign packages
+          xbps-rindex -a *.xbps 2>/dev/null || true
+          xbps-rindex -r "$PWD"
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
+          xbps-rindex -c "$PWD"
+
+          echo "==> cleaning up private key..."
+          rm -f private.pem
+
+      - name: Set release tag
+        id: set_tag
+        run: echo "tag=build-$(date +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Push binpkgs (per arch)
+        env:
+            REPO_OWNER: ${{ github.repository_owner }}
+            TOKEN: ${{ secrets.TOKEN }}
+            RESULT_NAME: ${{ matrix.config.arch }}
+        run: |
+          cd extra
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
+
+          BRANCH="bin"
+          REPO_NAME="VUR-${RESULT_NAME}"
+          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+
+          # Delete old binary repository, create new one
+          git push "$REMOTE" -d "$BRANCH" || true
+          git switch --orphan "$BRANCH"
+
+          # Initialize git
+          git init
+          # Setup Git LFS
+          git lfs install
+          echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+          git add .gitattributes
+
+          # Create README
+          cat > README.md << EOF
+          # Void User Repository - ${ARCH}
+          
+          Binary package repository for Void Linux (${ARCH} architecture).
+          
+          This is a rolling release repository - only the latest version of each package is kept.
+          
+          ## Usage
+          
+          Add this repository to your system:
+          
+          \`\`\`bash
+          sudo mkdir -p /etc/xbps.d
+          echo "repository=https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
+          \`\`\`
+          
+          Then update and install packages:
+          
+          \`\`\`bash
+          sudo xbps-install -S
+          sudo xbps-install <package-name>
+          \`\`\`
+          
+          ## Note
+          
+          - This repository uses Git LFS for storing binary packages
+          - Old package versions are automatically replaced with newer ones
+          - This repository is automatically built and updated by GitHub Actions
+          - Templates are in https://github.com/oSoWoSo/void-user-repository
+          
+          Last updated: $(date +'%Y-%m-%d %H:%M:%S UTC')
+          EOF
+
+          # Populate and push new binary repository
+          cp ../void-packages/hostdir/binpkgs/* ./
+          git add .
+          git commit -m "Upload latest packages to repository"
+          git push -f "$REMOTE" "$BRANCH"
+
+          echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"

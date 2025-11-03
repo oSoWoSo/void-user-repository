@@ -1,0 +1,23 @@
+name: build
+
+on:
+  push:
+    branches:
+        #- master
+        - main
+    paths:
+        - 'srcpkgs/**'
+  workflow_dispatch:
+    inputs:
+      templates:
+        description: 'Build multiple packages'
+        required: false
+        default: ""
+        type: string
+      template:
+        description: 'Build single package'
+        required: false
+        default: ''
+        type: choice
+        options:
+        - 

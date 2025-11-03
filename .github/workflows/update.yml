@@ -1,0 +1,73 @@
+name: Update templatesList and workflow
+
+on:
+  push:
+    paths:
+      - 'srcpkgs/**'
+      - '.github/build-REST.yml'
+      - '.github/build-START.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  list-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          TOKEN: ${{ secrets.TOKEN }}
+
+      - name: List templates
+        run: |
+          rm -f .github/templatesList
+          find srcpkgs/* -maxdepth 0 -type d | cut -d'/' -f2 | tee -a .github/templatesList
+
+      - name: Update README
+        run: |
+          sed -i '/## Available packages/,$!w temp.md' README.md
+          sed -i '/## The `vay` script/,$w end.md' README.md
+          echo "## Available packages" >> temp.md
+          echo "| package | version | homepage | maintainer | notes |" >> temp.md
+          echo "|:--------|:--------|:---------|:-----------|:------|" >> temp.md
+          while IFS= read -r line; do
+            package=$line
+            template_file="srcpkgs/$line/template"
+            if [ -f "$template_file" ]; then
+              homepage=$(grep '^homepage=' "$template_file" | cut -d '=' -f2 | cut -d'"' -f2)
+              version=$(grep '^version=' "$template_file" | cut -d '=' -f2)
+              maintainer=$(grep '^maintainer=' "$template_file" | cut -d '=' -f2 | cut -d' ' -f1 | cut -d'"' -f2)
+              notes=$(grep '^archs=' "$template_file" | cut -d'=' -f2 | cut -d'"' -f2)
+              echo "| $package | $version | $homepage | $maintainer | $notes |" >> temp.md
+            fi
+          done < .github/templatesList
+          cat end.md >> temp.md
+          mv temp.md README.md
+          rm end.md
+
+      - name: Update build workflow
+        run: |
+          cd .github/workflows
+          cp -f ../build-START.yml build.yml
+          while read -r line; do 
+            echo "        - $(echo "$line")"
+          done < ../templatesList >> build.yml
+          cat ../build-REST.yml >> build.yml
+
+      - name: "Push results"
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          git config --global user.name "web-flow"
+          git config --global user.email "noreply@github.com"
+          git add README.md || echo "README.md not added"
+          git add .github/templatesList || echo "templatesList not added"
+          git add .github/workflows/build.yml || echo "build.yml not added"
+          git commit -m "Update templatesList" || echo "Nothing to commit"
+          git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
+          git push || echo "Nothing to push"
+          git status
