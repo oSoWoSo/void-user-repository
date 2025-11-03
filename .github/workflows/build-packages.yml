@@ -106,7 +106,7 @@ jobs:
             if [ -d "$original" ]; then
               echo "Removing old template directory: $template"
               rm -rf "$original" || echo "Cannot remove $original"
-              cp -rfv extra/srcpkgs/$template void-packages/srcpkgs/
+              cp -rfv $template void-packages/srcpkgs/
             fi
           done
 
