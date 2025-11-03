@@ -104,7 +104,7 @@ jobs:
             template_name=$(basename "$template")
             original="void-packages/srcpkgs/$template_name"
             if [ -d "$original" ]; then
-              echo "Removing old template directory: $template
+              echo "Removing old template directory: $template"
               rm -rf "$original" || echo "Cannot remove $original"
               cp -rfv extra/srcpkgs/$template void-packages/srcpkgs/
             fi
