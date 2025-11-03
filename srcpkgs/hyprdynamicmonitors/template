@@ -1,0 +1,20 @@
+# Template file for 'hyprdynamicmonitors'
+pkgname=hyprdynamicmonitors
+version=1.3.5
+revision=1
+build_style=go
+go_import_path="github.com/fiffeek/hyprdynamicmonitors"
+hostmakedepends="pkg-config dbus-x11 hyprland upower python3-cfgv python3-distlib python3-filelock python3-identify"
+#makedepends=""
+#depends=""
+short_desc="Hyprland configuration based on connected displays, power and lid state"
+maintainer="zenobit <zenobit@disroot.org>"
+license="MIT"
+homepage="https://github.com/fiffeek/hyprdynamicmonitors"
+#changelog=""
+distfiles="https://github.com/fiffeek/hyprdynamicmonitors/archive/refs/tags/v${version}.tar.gz"
+checksum=c944fbbc5ef88c4e62c017662994d4088f0cc3bad3ef5ede2e0cefec50d46adf
+
+post_install() {
+	vlicense LICENSE
+}
