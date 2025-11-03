@@ -216,7 +216,7 @@ jobs:
           export PATH="/opt/xbps/usr/bin/:$PATH"
           
           # Repository name based on architecture
-          REPO_NAME="void-repository-${ARCH}"
+          REPO_NAME="VUR-${ARCH}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
           
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
@@ -258,7 +258,6 @@ jobs:
             # Sign if key is available
             if [ -n "${{ secrets.PRIV_KEY }}" ]; then
               printf "%s\n" "${{ secrets.PRIV_KEY }}" > private.pem
-              chmod 600 private.pem
               xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
               xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
               rm -f private.pem
@@ -287,7 +286,7 @@ jobs:
             
             # Create README
             cat > README.md << EOF
-          # Void Linux Repository - ${ARCH}
+          # Void User Repository - ${ARCH}
           
           Binary package repository for Void Linux (${ARCH} architecture).
           
