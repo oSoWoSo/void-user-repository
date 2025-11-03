@@ -158,6 +158,8 @@ jobs:
 
           echo "==> writing private key to file..."
           printf "%s\n" "$PRIV_KEY" > private.pem
+          chmod 600 private.pem
+
           echo "==> merging free + nonfree"
           if [ -d "nonfree" ]; then
               mv nonfree/*.xbps . 2>/dev/null || true
@@ -173,86 +175,39 @@ jobs:
           echo "==> cleaning up private key..."
           rm -f private.pem
 
-      - name: Push to separate repository
+      - name: Set release tag
+        id: set_tag
+        run: echo "tag=build-$(date +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Push binpkgs (per arch)
         env:
             REPO_OWNER: ${{ github.repository_owner }}
-            REPO_NAME: ${{ github.event.repository.name }}
             TOKEN: ${{ secrets.TOKEN }}
             RESULT_NAME: ${{ matrix.config.arch }}
         run: |
-          export PATH="/opt/xbps/usr/bin/:$PATH"
-          
-          # Repository name based on architecture
-          REPO_NAME="VUR-${ARCH}"
-          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
-          
-          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
-          
-          # Create temporary directory for the repository
-          mkdir -p /tmp/repo
-          cd /tmp/repo
-          
-          # Initialize git
-          git init
+          cd extra
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
+          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
+
+          BRANCH="bin"
+          REPO_NAME="VUR-${RESULT_NAME}"
+          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+
+          # Delete old binary repository, create new one
+          git push "$REMOTE" -d "$BRANCH" || true
+          git switch --orphan "$BRANCH"
+
+          # Initialize git
+          git init
           # Setup Git LFS
           git lfs install
-          
-          # Try to clone existing repository
-          echo "==> Attempting to clone existing repository..."
-          if git clone --depth 1 "$REMOTE" existing 2>/dev/null; then
-            echo "==> Repository exists, replacing old packages with new ones..."
-            cd existing
-            
-            # Get list of new packages (base names without version)
-            NEW_PKGS=$(cd /void-packages/hostdir/binpkgs && ls *.xbps 2>/dev/null | sed 's/-[0-9].*//' | sort -u)
-            
-            # Remove old versions of packages that we're updating
-            for pkg in $NEW_PKGS; do
-              echo "==> Removing old versions of: ${pkg}"
-              rm -f ${pkg}-*.xbps 2>/dev/null || true
-            done
-            
-            # Copy new packages
-            cp /void-packages/hostdir/binpkgs/*.xbps . 2>/dev/null || true
-            
-            # Re-index everything
-            xbps-rindex -a *.xbps 2>/dev/null || true
-            xbps-rindex -r "$PWD"
-            
-            # Sign if key is available
-            if [ -n "${{ secrets.PRIV_KEY }}" ]; then
-              printf "%s\n" "${{ secrets.PRIV_KEY }}" > private.pem
-              xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
-              xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
-              rm -f private.pem
-            fi
-            
-            xbps-rindex -c "$PWD"
-            
-            # Remove old LFS objects and re-track
-            #git lfs uninstall
-            git lfs install
-            
-            git add .
-            git commit -m "Update packages - $(date +'%Y-%m-%d %H:%M:%S')" || true
-            git push origin main
-          else
-            echo "==> Repository doesn't exist, creating new one..."
-            cd /tmp/repo
-            
-            # Copy packages to new repo
-            cp /void-packages/hostdir/binpkgs/*.xbps . 2>/dev/null || true
-            cp /void-packages/hostdir/binpkgs/*-repodata . 2>/dev/null || true
-            
-            # Setup Git LFS for .xbps files
-            echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
-            git add .gitattributes
-            
-            # Create README
-            cat > README.md << EOF
+          echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+          git add .gitattributes
+
+          # Create README
+          cat > README.md << EOF
           # Void User Repository - ${ARCH}
           
           Binary package repository for Void Linux (${ARCH} architecture).
@@ -284,11 +239,11 @@ jobs:
           
           Last updated: $(date +'%Y-%m-%d %H:%M:%S UTC')
           EOF
-            
-            git add .
-            git commit -m "Initial commit - packages for ${ARCH}"
-            git branch -M main
-            git push -u "$REMOTE" main
-          fi
-          
+
+          # Populate and push new binary repository
+          cp ../void-packages/hostdir/binpkgs/* ./
+          git add .
+          git commit -m "Upload latest packages to repository"
+          git push -f "$REMOTE" "$BRANCH"
+
           echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
