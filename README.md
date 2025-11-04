@@ -51,18 +51,22 @@ Note: this script not only works for the extra template files provided in this r
 ```
 git clone https://github.com/oSoWoSo/void-user-repository
 ```
+
 2. Change into the cloned directory:
 ```
 cd void-user-repository
 ```
+
 3. Create `~/.local/bin` if it doesn’t already exist:
 ```
 mkdir -p ~/.local/bin
 ```
+
 4. Symlink the helper script:
 ```
 ln -sf "$(realpath vay.sh)" "$HOME/.local/bin/vay"
 ```
+
 5. Run the helper by typing vay followed by one or more package names:
 ```
 vay <package1> <package2> ...
@@ -79,19 +83,19 @@ Currently prebuilt binary packages are provided for the following architectures:
 1. Create an entry in /etc/xbps.d/ and add this repository. This can be done with the following commands:
 - x86_64-glibc
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/void-user-repository/repository-x86_64-glibc | sudo tee /etc/xbps.d/20-void-user-repository.conf
+echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-x86_64 | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 - x86_64-musl
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/void-user-repository/repository-x86_64-musl | sudo tee /etc/xbps.d/20-void-user-repository.conf
+echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-x86_64-musl | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 - aarch64-glibc
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/void-user-repository/repository-aarch64-glibc | sudo tee /etc/xbps.d/20-void-user-repository.conf
+echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-aarch64 | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 - aarch64-musl
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/void-user-repository/repository-aarch64-musl | sudo tee /etc/xbps.d/20-void-user-repository.conf
+echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-aarch64-musl | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 2. Refresh your repositories and accept the fingerprint:
 ```
@@ -109,20 +113,25 @@ sudo xbps-install -S hyprland
 git clone https://github.com/oSoWoSo/void-user-repository.git
 git clone https://github.com/void-linux/void-packages.git
 ```
+
 2. Copy the templates files from this repository into void-packages:
 ```
 cp -r void-user-repository/srcpkgs/* void-packages/srcpkgs/
 ```
+
 3. Edit shlibs by removing the lines found in shlibs_remove and appending the lines from shlibs_append.
+
 4. Bootstrap the build system:
 ```
 cd void-packages
 ./xbps-src binary-bootstrap
 ```
+
 5. Build the packages you want:
 ```
 ./xbps-src pkg <package1> <package2> ...
 ```
+
 6. Install the built packages:
 ```
 sudo xbps-install --repository /hostdir/binpkgs/ <package1> <package2> ...
