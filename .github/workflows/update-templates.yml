@@ -52,7 +52,7 @@ jobs:
           cd .github/workflows
           cp -f ../build-START.yml build.yml
           while read -r line; do 
-            echo "      - $(echo "$line")"
+            echo "        - $(echo "$line")"
           done < ../templatesList >> build.yml
           cat ../build-REST.yml >> build.yml
 
