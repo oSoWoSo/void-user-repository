@@ -142,9 +142,9 @@ jobs:
 
           if [ -n "${failed}" ]; then
             echo
-            echo "These packages failed:"
+            echo "Failed builds:" >> $GITHUB_STEP_SUMMARY
             for f in ${failed}; do
-                echo "  - ${f}"
+                echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
           fi
 
