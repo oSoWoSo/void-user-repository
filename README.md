@@ -83,19 +83,19 @@ Currently prebuilt binary packages are provided for the following architectures:
 1. Create an entry in /etc/xbps.d/ and add this repository. This can be done with the following commands:
 - x86_64-glibc
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-x86_64 | sudo tee /etc/xbps.d/00-VUR.conf
+echo repository=https://github.com/oSoWoSo/VUR-x86_64/raw/refs/heads/bin | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 - x86_64-musl
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-x86_64-musl | sudo tee /etc/xbps.d/00-VUR.conf
+echo repository=https://github.com/oSoWoSo/VUR-x86_64-musl/raw/refs/heads/bin | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 - aarch64-glibc
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-aarch64 | sudo tee /etc/xbps.d/00-VUR.conf
+echo repository=https://github.com/oSoWoSo/VUR-aarch64/raw/refs/heads/bin | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 - aarch64-musl
 ```
-echo repository=https://raw.githubusercontent.com/oSoWoSo/VUR-aarch64-musl | sudo tee /etc/xbps.d/00-VUR.conf
+echo repository=https://github.com/oSoWoSo/VUR-aarch64-musl/raw/refs/heads/bin | sudo tee /etc/xbps.d/00-VUR.conf
 ```
 2. Refresh your repositories and accept the fingerprint:
 ```
