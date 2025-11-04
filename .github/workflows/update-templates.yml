@@ -45,11 +45,11 @@ jobs:
       - name: Update build workflow
         run: |
           cd .github/workflows
-          cp ../build-SOURCE.yml build.yml
+          cp ../build-START.yml build.yml
           sed -i '/options:/,$!w /dev/null' build.yml
           sed -i '/options:/r .github/templatesList' build.yml
           sed -i 's/^/        - /' build.yml
-          sed -i '/options:/,$!w build.yml' build.yml
+          cat ../build-REST.yml >> build.yml
 
       - name: "Push results"
         run: |
