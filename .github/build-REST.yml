@@ -93,7 +93,7 @@ jobs:
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-          pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n")
+          pkgs=${{ github.event.inputs.template }}
           
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
               arch="-a $ARCH"
