@@ -17,6 +17,7 @@ on:
       template:
         description: 'Build single package'
         required: false
-        default: ""
+        default: ''
         type: choice
         options:
+        - 
