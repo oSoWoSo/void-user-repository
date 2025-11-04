@@ -1,4 +1,4 @@
-name: Update templatesList
+name: Update templatesList and workflow
 
 on:
   push:
