@@ -27,6 +27,7 @@ jobs:
       - name: Check inputs
         run: |
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
+            echo "No template to build choosen! Exiting" >> $GITHUB_STEP_SUMMARY
             exit 1
           elif [ ! -z "${{ inputs.template }}" ]; then
             echo "Building ${{ inputs.template }} template" >> $GITHUB_STEP_SUMMARY
