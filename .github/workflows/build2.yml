@@ -68,8 +68,8 @@ jobs:
             if [ -d "$original" ]; then
               echo "Removing old template directory: $template"
               rm -rf "$original" || echo "Cannot remove $original"
-              cp -rfv $template void-packages/srcpkgs/
             fi
+            cp -rv $template void-packages/srcpkgs/
           done
 
           SHLIBS_FILE="void-packages/common/shlibs"
