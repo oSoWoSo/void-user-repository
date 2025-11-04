@@ -6,6 +6,10 @@ on:
       - 'srcpkgs/**'
   workflow_dispatch:
 
+permissions:
+  contents: write
+  actions: write
+
 jobs:
   list-templates:
     runs-on: ubuntu-latest
