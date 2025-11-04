@@ -1,5 +1,11 @@
 jobs:
   build:
+    name: Check inputs
+    run: |
+      if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
+         exit 1
+      fi
+    
     name: Build packages
     runs-on: ubuntu-latest
     container:
@@ -50,7 +56,14 @@ jobs:
       - name: Merge templates and edit shlibs
         run: |
           echo "==> copying templates..."
-          cp -rv extra/srcpkgs/${{ github.event.inputs.template }} void-packages/srcpkgs/
+          # Use inputs
+          if [ -z "${{ inputs.template }}" ] || [ -z "${{ inputs.templates }}" ]; then
+            exit 1
+          elif [ ! -z "${{ inputs.template }}" ]; then
+            cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
+          elif [ ! -z "${{ inputs.templates }}" ]; then
+            cp -rv extra/srcpkgs/${{ inputs.templates }} void-packages/srcpkgs/
+          fi
 
           SHLIBS_FILE="void-packages/common/shlibs"
           APPEND_FILE="extra/shlibs_append"
@@ -93,7 +106,13 @@ jobs:
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-          pkgs=${{ github.event.inputs.template }}
+          if [ -z "${{ inputs.template }}" ] || [ -z "${{ inputs.templates }}" ]; then
+            exit 1
+          elif [ ! -z "${{ inputs.template }}" ]; then
+            pkgs=${{ inputs.template }}
+          elif [ ! -z "${{ inputs.templates }}" ]; then
+            pkgs=${{ inputs.templates }}
+          fi
           
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
               arch="-a $ARCH"
