@@ -8,7 +8,13 @@ on:
     paths:
         - 'srcpkgs/**'
   workflow_dispatch:
-
+    inputs:
+      template:
+      description: 'Package to build'
+      required: true
+      type: choice
+      options:
+        ${OPTIONS}
 
 jobs:
   build:
@@ -163,26 +169,64 @@ jobs:
         id: set_tag
         run: echo "tag=build-$(date +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
 
-      - name: Push binpkgs branch (per arch)
+      - name: Push binpkgs (per arch)
         env:
             REPO_OWNER: ${{ github.repository_owner }}
-            REPO_NAME: ${{ github.event.repository.name }}
             TOKEN: ${{ secrets.TOKEN }}
             RESULT_NAME: ${{ matrix.config.arch }}
         run: |
           cd extra
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          BRANCH="repository-${RESULT_NAME}"
-          REMOTE="https://$REPO_OWNER:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
-
+          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
+          BRANCH="bin"
+          REPO_NAME="VUR-${RESULT_NAME}"
+          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
           # Delete old binary repository, create new one
           git push "$REMOTE" -d "$BRANCH" || true
           git switch --orphan "$BRANCH"
-
+          # Initialize git
+          git init
+          # Setup Git LFS
+          git lfs install
+          echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+          git add .gitattributes
+          # Create README
+          cat > README.md << EOF
+          # Void User Repository - ${ARCH}
+          
+          Binary package repository for Void Linux (${ARCH} architecture).
+          
+          This is a rolling release repository - only the latest version of each package is kept.
+          
+          ## Usage
+          
+          Add this repository to your system:
+          
+          \`\`\`bash
+          sudo mkdir -p /etc/xbps.d
+          echo "repository=https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
+          \`\`\`
+          
+          Then update and install packages:
+          
+          \`\`\`bash
+          sudo xbps-install -S
+          sudo xbps-install <package-name>
+          \`\`\`
+          
+          ## Note
+          
+          - This repository uses Git LFS for storing binary packages
+          - Old package versions are automatically replaced with newer ones
+          - This repository is automatically built and updated by GitHub Actions
+          - Templates are in https://github.com/oSoWoSo/void-user-repository
+          
+          Last updated: $(date +'%Y-%m-%d %H:%M:%S UTC')
+          EOF
           # Populate and push new binary repository
           cp ../void-packages/hostdir/binpkgs/* ./
           git add .
           git commit -m "Upload latest packages to repository"
           git push -f "$REMOTE" "$BRANCH"
+          echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
