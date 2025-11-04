@@ -1,11 +1,5 @@
 jobs:
   build:
-    name: Check inputs
-    run: |
-      if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-         exit 1
-      fi
-    
     name: Build packages
     runs-on: ubuntu-latest
     container:
@@ -30,6 +24,12 @@ jobs:
       contents: write
 
     steps:
+      - name: Check inputs
+        run: |
+          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
+            exit 1
+          fi
+
       - name: Prepare container
         run: |
           # switch to repo-ci mirror
