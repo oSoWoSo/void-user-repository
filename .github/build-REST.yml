@@ -28,6 +28,10 @@ jobs:
         run: |
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             exit 1
+          elif [ ! -z "${{ inputs.template }}" ]; then
+            echo "Building ${{ inputs.template }} template" >> $GITHUB_STEP_SUMMARY
+          elif [ ! -z "${{ inputs.templates }}" ]; then
+            echo "Building: ${{ inputs.template }}" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Prepare container
@@ -57,7 +61,7 @@ jobs:
         run: |
           echo "==> copying templates..."
           # Use inputs
-          if [ -z "${{ inputs.template }}" ] || [ -z "${{ inputs.templates }}" ]; then
+          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             exit 1
           elif [ ! -z "${{ inputs.template }}" ]; then
             cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
@@ -106,7 +110,7 @@ jobs:
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-          if [ -z "${{ inputs.template }}" ] || [ -z "${{ inputs.templates }}" ]; then
+          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             exit 1
           elif [ ! -z "${{ inputs.template }}" ]; then
             pkgs=${{ inputs.template }}
