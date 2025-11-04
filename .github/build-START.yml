@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       template:
-      description: 'Package to build'
-      required: true
-      type: choice
-      options:
+        description: 'Package to build'
+        required: true
+        type: choice
+        options:
