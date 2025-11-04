@@ -5,9 +5,9 @@ hyprdynamicmonitors
 hyprgraphics
 hypridle
 hyprland
+hyprland-guiutils
 hyprland-protocols
 hyprland-qt-support
-hyprland-qtutils
 hyprlang
 hyprlock
 hyprpaper
@@ -15,6 +15,7 @@ hyprpicker
 hyprpolkitagent
 hyprsunset
 hyprsysteminfo
+hyprtoolkit
 hyprutils
 hyprwayland-scanner
 libspng

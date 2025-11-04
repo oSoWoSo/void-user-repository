@@ -15,15 +15,15 @@ If you dont wish to build the packages locally, this repository also provides pr
 | package | version | homepage | maintainer | notes |
 |:--------|:--------|:---------|:-----------|:------|
 | aquamarine | 0.9.5 | https://github.com/hyprwm/aquamarine | zenobit |  |
-| glaze | 6.0.1 | https://github.com/stephenberry/glaze | zenobit |  |
+| glaze | 6.0.2 | https://github.com/stephenberry/glaze | zenobit |  |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |
 | hyprdynamicmonitors | 1.3.5 | https://github.com/fiffeek/hyprdynamicmonitors | zenobit |  |
-| hyprgraphics | 0.2.0 | https://github.com/hyprwm/hyprgraphics | zenobit |  |
+| hyprgraphics | 0.3.0 | https://github.com/hyprwm/hyprgraphics | zenobit |  |
 | hypridle | 0.1.7 | https://github.com/hyprwm/hypridle | zenobit |  |
-| hyprland | 0.51.1 | https://hyprland.org/ | zenobit |  |
+| hyprland | 0.52.0 | https://hyprland.org/ | zenobit |  |
+| hyprland-guiutils | 0.1.0 | https://github.com/hyprwm/hyprland-guiutils | zenobit |  |
 | hyprland-protocols | 0.7.0 | https://github.com/hyprwm/hyprland-protocols | zenobit |  |
 | hyprland-qt-support | 0.1.0 | https://github.com/hyprwm/hyprland-qt-support | zenobit |  |
-| hyprland-qtutils | 0.1.5 | https://github.com/hyprwm/hyprland-qtutils | zenobit |  |
 | hyprlang | 0.6.4 | https://github.com/hyprwm/hyprlang | zenobit |  |
 | hyprlock | 0.9.2 | https://github.com/hyprwm/hyprlock | zenobit |  |
 | hyprpaper | 0.7.6 | https://github.com/hyprwm/hyprpaper | zenobit |  |
@@ -31,7 +31,8 @@ If you dont wish to build the packages locally, this repository also provides pr
 | hyprpolkitagent | 0.1.3 | https://github.com/hyprwm/hyprpolkitagent | zenobit |  |
 | hyprsunset | 0.3.3 | https://github.com/hyprwm/hyprsunset | zenobit |  |
 | hyprsysteminfo | 0.1.3 | https://github.com/hyprwm/hyprsysteminfo | zenobit |  |
-| hyprutils | 0.10.0 | https://github.com/hyprwm/hyprutils | zenobit |  |
+| hyprtoolkit | 0.2.4 | https://github.com/hyprwm/hyprtoolkit | zenobit |  |
+| hyprutils | 0.10.1 | https://github.com/hyprwm/hyprutils | zenobit |  |
 | hyprwayland-scanner | 0.4.5 | https://github.com/hyprwm/hyprwayland-scanner | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |

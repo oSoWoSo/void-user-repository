@@ -17,12 +17,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           TOKEN: ${{ secrets.TOKEN }}
 
-      - name: List templates
+      - name: Update templatesList and workflow
         run: |
           rm -f .github/templatesList
           find srcpkgs/* -maxdepth 0 -type d | cut -d'/' -f2 | tee -a .github/templatesList
@@ -53,21 +53,21 @@ jobs:
         run: |
           cd .github/workflows
           cp -f ../build-START.yml build.yml
-          while read -r line; do 
+          while read -r line; do
             echo "        - $(echo "$line")"
           done < ../templatesList >> build.yml
           cat ../build-REST.yml >> build.yml
 
       - name: "Push results"
         env:
-          TOKEN: ${{ secrets.TOKEN }}
+          TOKEN: ${{ secrets.WORKFLOWS }}
         run: |
           git config --global user.name "web-flow"
           git config --global user.email "noreply@github.com"
           git add README.md || echo "README.md not added"
           git add .github/templatesList || echo "templatesList not added"
           git add .github/workflows/build.yml || echo "build.yml not added"
-          git commit -m "Update templatesList" || echo "Nothing to commit"
-          git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
+          git commit "CI: update" || echo "Nothing to commit"
+          #git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
           git push || echo "Nothing to push"
           git status

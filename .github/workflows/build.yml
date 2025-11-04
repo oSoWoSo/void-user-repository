@@ -1,3 +1,54 @@
+name: matrix build
+
+on:
+  #push:
+  #  branches:
+  #    - master
+  #    - main
+  #  paths:
+  #    - 'srcpkgs/**'
+  workflow_dispatch:
+    description: 'If no package is selected, all templates in the branch will be compiled.'
+    inputs:
+      templates:
+        description: 'Build multiple packages'
+        required: false
+        default: ""
+        type: string
+      template:
+        description: 'Build single package'
+        required: false
+        default: ''
+        type: choice
+        options:
+        -
+        - aquamarine
+        - glaze
+        - hyprcursor
+        - hyprdynamicmonitors
+        - hyprgraphics
+        - hypridle
+        - hyprland
+        - hyprland-guiutils
+        - hyprland-protocols
+        - hyprland-qt-support
+        - hyprlang
+        - hyprlock
+        - hyprpaper
+        - hyprpicker
+        - hyprpolkitagent
+        - hyprsunset
+        - hyprsysteminfo
+        - hyprtoolkit
+        - hyprutils
+        - hyprwayland-scanner
+        - libspng
+        - ly
+        - sdbus-cpp
+        - tomlplusplus
+        - xdg-desktop-portal-hyprland
+        - zen-browser
+        - zig
 
 permissions:
   contents: write

@@ -1,13 +1,14 @@
-name: build
+name: matrix build
 
 on:
-  push:
-    branches:
-        #- master
-        - main
-    paths:
-        - 'srcpkgs/**'
+  #push:
+  #  branches:
+  #    - master
+  #    - main
+  #  paths:
+  #    - 'srcpkgs/**'
   workflow_dispatch:
+    description: 'If no package is selected, all templates in the branch will be compiled.'
     inputs:
       templates:
         description: 'Build multiple packages'
@@ -20,4 +21,4 @@ on:
         default: ''
         type: choice
         options:
-        - 
+        -
