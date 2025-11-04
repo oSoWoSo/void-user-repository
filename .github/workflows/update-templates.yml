@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'srcpkgs/**'
+      - '.github/build-REST.yml'
+      - '.github/build-START.yml'
   workflow_dispatch:
 
 permissions:
