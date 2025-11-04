@@ -42,6 +42,15 @@ jobs:
           mv temp.md README.md
           rm end.md
 
+      - name: Update build workflow
+        run: |
+          cd .github/workflows
+          cp ../build-SOURCE.yml build.yml
+          sed -i '/options:/,$!w /dev/null' build.yml
+          sed -i '/options:/r .github/templatesList' build.yml
+          sed -i 's/^/        - /' build.yml
+          sed -i '/options:/,$!w build.yml' build.yml
+
       - name: "Push results"
         run: |
           git config --global user.name "web-flow"
