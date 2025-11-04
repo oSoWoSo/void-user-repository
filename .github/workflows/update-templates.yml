@@ -57,7 +57,7 @@ jobs:
 
       - name: "Push results"
         env:
-          TOKEN: ${{ secrets.TOKEN }}
+          TOKEN: ${{ secrets.WORKFLOWS }}
         run: |
           git config --global user.name "web-flow"
           git config --global user.email "noreply@github.com"
