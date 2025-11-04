@@ -62,8 +62,9 @@ jobs:
         run: |
           git config --global user.name "web-flow"
           git config --global user.email "noreply@github.com"
-          git status
-          git add --all || echo "Nothing to add"
+          git add README.md || echo "README.md not added"
+          git add .github/templatesList || echo "templatesList not added"
+          git add .github/workflows/build.yml || echo "build.yml not added"
           git commit -m "Update templatesList" || echo "Nothing to commit"
           git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
           git push || echo "Nothing to push"
