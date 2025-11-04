@@ -50,10 +50,10 @@ jobs:
       - name: Update build workflow
         run: |
           cd .github/workflows
-          cp ../build-START.yml build.yml
-          sed -i '/options:/,$!w /dev/null' build.yml
-          sed -i '/options:/r .github/templatesList' build.yml
-          sed -i 's/^/        - /' build.yml
+          cp -f ../build-START.yml build.yml
+          while read -r line; do 
+            echo "        - $(echo "$line")"
+          done < ../templatesList >> build.yml
           cat ../build-REST.yml >> build.yml
 
       - name: "Push results"
