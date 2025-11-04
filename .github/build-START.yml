@@ -9,8 +9,14 @@ on:
         - 'srcpkgs/**'
   workflow_dispatch:
     inputs:
+      templates:
+        description: 'Build multiple packages'
+        required: false
+        default: ""
+        type: string
       template:
-        description: 'Package to build'
-        required: true
+        description: 'Build single package'
+        required: false
+        default: ""
         type: choice
         options:
