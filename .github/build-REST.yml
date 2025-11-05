@@ -26,13 +26,12 @@ jobs:
     steps:
       - name: Check inputs
         run: |
-          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            echo "No template to build choosen! Exiting" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          elif [ ! -z "${{ inputs.template }}" ]; then
+          if [ ! -z "${{ inputs.template }}" ]; then
             echo "Building ${{ inputs.template }} template" >> $GITHUB_STEP_SUMMARY
           elif [ ! -z "${{ inputs.templates }}" ]; then
             echo "Building: ${{ inputs.template }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Building all templates"
           fi
 
       - name: Prepare container
@@ -63,11 +62,31 @@ jobs:
           echo "==> copying templates..."
           # Use inputs
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            exit 1
+            for template in extra/srcpkgs/*; do
+              template_name=$(basename "$template")
+              original="void-packages/srcpkgs/$template_name"
+              if [ -d "$original" ]; then
+                echo "Removing old template directory: $template"
+                rm -rf "$original" || echo "Cannot remove $original"
+              fi
+              cp -rv $template void-packages/srcpkgs/
+            done
           elif [ ! -z "${{ inputs.template }}" ]; then
+            if [ -d "void-packages/srcpkgs/${{ inputs.template }}" ]; then
+              echo "Removing old template directory: ${{ inputs.template }}"
+              rm -rf "void-packages/srcpkgs/${{ inputs.template }}" || echo "Cannot remove ${{ inputs.template }}"
+            fi
             cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
           elif [ ! -z "${{ inputs.templates }}" ]; then
-            cp -rv extra/srcpkgs/${{ inputs.templates }} void-packages/srcpkgs/
+            for template in "extra/srcpkgs/${{ inputs.templates }}"; do
+              template_name=$(basename "$template")
+              original="void-packages/srcpkgs/$template_name"
+              if [ -d "$original" ]; then
+                echo "Removing old template directory: $template"
+                rm -rf "$original" || echo "Cannot remove $original"
+              fi
+              cp -rv $template void-packages/srcpkgs/
+            done
           fi
 
           SHLIBS_FILE="void-packages/common/shlibs"
@@ -93,11 +112,11 @@ jobs:
             done < "$APPEND_FILE"
           fi
 
-          echo "=> applying inline edits..."
-          if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
-              echo "   - removing void-packages/srcpkgs/hyprutils/patches"
-              rm -rf void-packages/srcpkgs/hyprutils/patches
-          fi
+          #echo "=> applying inline edits..."
+          #if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
+          #    echo "   - removing void-packages/srcpkgs/hyprutils/patches"
+          #    rm -rf void-packages/srcpkgs/hyprutils/patches
+          #fi
 
       - name: Prepare masterdir
         run: |
@@ -112,7 +131,7 @@ jobs:
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            exit 1
+            pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n")
           elif [ ! -z "${{ inputs.template }}" ]; then
             pkgs=${{ inputs.template }}
           elif [ ! -z "${{ inputs.templates }}" ]; then
@@ -130,7 +149,14 @@ jobs:
           PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
           failed=""
 
+          echo "==> Build order with dependencies:"
+          echo "$PKGS"
+          echo
+
           for pkg in ${PKGS}; do
+            echo ''
+            echo "==> Building ${pkg}"
+            echo ''
             if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
               echo "!! build failed for ${pkg}"
               failed="${failed} ${pkg}"
@@ -139,13 +165,13 @@ jobs:
 
           if [ -n "${failed}" ]; then
             echo
-            echo "These packages failed:"
+            echo "Failed builds:" >> $GITHUB_STEP_SUMMARY
             for f in ${failed}; do
-                echo "  - ${f}"
+                echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
           fi
 
-      - name: Sign
+      - name: Sign packages
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.target }}
@@ -159,10 +185,11 @@ jobs:
 
           echo "==> merging free + nonfree"
           if [ -d "nonfree" ]; then
-              mv nonfree/*.xbps .
+              mv nonfree/*.xbps . 2>/dev/null || true
           fi
 
-          xbps-rindex -a *.xbps || true
+          # Index and sign packages
+          xbps-rindex -a *.xbps 2>/dev/null || true
           xbps-rindex -r "$PWD"
           xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
           xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
@@ -184,19 +211,24 @@ jobs:
           cd extra
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
+
           BRANCH="bin"
           REPO_NAME="VUR-${RESULT_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+
           # Delete old binary repository, create new one
           git push "$REMOTE" -d "$BRANCH" || true
           git switch --orphan "$BRANCH"
+
           # Initialize git
           git init
           # Setup Git LFS
           git lfs install
           echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
           git add .gitattributes
+
           # Create README
           cat > README.md << EOF
           # Void User Repository - ${ARCH}
@@ -230,9 +262,11 @@ jobs:
           
           Last updated: $(date +'%Y-%m-%d %H:%M:%S UTC')
           EOF
+
           # Populate and push new binary repository
           cp ../void-packages/hostdir/binpkgs/* ./
           git add .
           git commit -m "Upload latest packages to repository"
           git push -f "$REMOTE" "$BRANCH"
+
           echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
