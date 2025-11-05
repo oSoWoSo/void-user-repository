@@ -37,6 +37,7 @@ If you dont wish to build the packages locally, this repository also provides pr
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
+| shattered-pixel-dungeon | 3.2.5 | https://github.com/00-Evan/shattered-pixel-dungeon | Mihail |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | xdg-desktop-portal-hyprland | 1.3.11 | https://github.com/hyprwm/xdg-desktop-portal-hyprland | zenobit |  |
 | zen-browser | 1.17.4b | https://www.zen-browser.app/ | Encoded14 | x86_64 aarch64 |
