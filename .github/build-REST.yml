@@ -24,20 +24,7 @@ jobs:
           - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
           - { arch: aarch64-musl, host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 0 }
 
-    permissions:
-      contents: write
-
     steps:
-      - name: Check inputs
-        run: |
-          if [ ! -z "${{ inputs.template }}" ]; then
-            echo "Building ${{ inputs.template }} template" >> $GITHUB_STEP_SUMMARY
-          elif [ ! -z "${{ inputs.templates }}" ]; then
-            echo "Building: ${{ inputs.template }}" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Building all templates"
-          fi
-
       - name: Prepare container
         run: |
           # switch to repo-ci mirror
@@ -141,12 +128,10 @@ jobs:
           elif [ ! -z "${{ inputs.templates }}" ]; then
             pkgs=${{ inputs.templates }}
           fi
-          
+
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
               arch="-a $ARCH"
           fi
-
-          export arch
 
           if [ "$TEST" = 1 ]; then
               test="-Q"
@@ -183,9 +168,6 @@ jobs:
           XBPS_ARCH: ${{ matrix.config.arch }}
         working-directory: void-packages/hostdir/binpkgs/
         run: |
-          echo ''
-          env
-          echo ''
           export PATH="/opt/xbps/usr/bin/:$PATH"
 
           echo "==> writing private key to file..."
@@ -241,34 +223,34 @@ jobs:
           # Create README
           cat > README.md << EOF
           # Void User Repository - ${ARCH}
-          
+
           Binary package repository for Void Linux (${ARCH} architecture).
-          
+
           This is a rolling release repository - only the latest version of each package is kept.
-          
+
           ## Usage
-          
+
           Add this repository to your system:
-          
+
           \`\`\`bash
           sudo mkdir -p /etc/xbps.d
           echo "repository=https://github.com/${REPO_OWNER}/${REPO_NAME}/raw/refs/heads/bin" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
           \`\`\`
-          
+
           Then update and install packages:
-          
+
           \`\`\`bash
           sudo xbps-install -S
           sudo xbps-install <package-name>
           \`\`\`
-          
+
           ## Note
-          
+
           - This repository uses Git LFS for storing binary packages
           - Old package versions are automatically replaced with newer ones
           - This repository is automatically built and updated by GitHub Actions
           - Templates are in https://github.com/oSoWoSo/void-user-repository
-          
+
           Last updated: $(date +'%Y-%m-%d %H:%M:%S UTC')
           EOF
 
