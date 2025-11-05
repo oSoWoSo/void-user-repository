@@ -196,7 +196,7 @@ jobs:
       - name: Push binpkgs (per arch)
         env:
             REPO_OWNER: ${{ github.repository_owner }}
-            TOKEN: ${{ secrets.TOKEN }}
+            TOKEN: ${{ secrets.WORKFLOWS }}
             RESULT_NAME: ${{ matrix.config.arch }}
         run: |
           cd extra
