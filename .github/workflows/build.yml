@@ -1,0 +1,336 @@
+name: matrix build
+
+on:
+  push:
+    branches:
+        #- master
+        - main
+    paths:
+        - 'srcpkgs/**'
+  workflow_dispatch:
+    inputs:
+      templates:
+        description: 'Build multiple packages'
+        required: false
+        default: ""
+        type: string
+      template:
+        description: 'Build single package'
+        required: false
+        default: ''
+        type: choice
+        options:
+        - 
+        - Converseen
+        - aquamarine
+        - blocky
+        - desktop-tui
+        - dotbot
+        - dtrx
+        - easybashgui
+        - efl
+        - enlightenment
+        - ftxui
+        - gcompris-qt
+        - glaze
+        - gpu-screen-recorder
+        - gpu-screen-recorder-gtk
+        - hyprcursor
+        - hyprdynamicmonitors
+        - hyprgraphics
+        - hypridle
+        - hyprland
+        - hyprland-guiutils
+        - hyprland-protocols
+        - hyprland-qt-support
+        - hyprlang
+        - hyprlock
+        - hyprpaper
+        - hyprpicker
+        - hyprpolkitagent
+        - hyprsunset
+        - hyprsysteminfo
+        - hyprtoolkit
+        - hyprutils
+        - hyprwayland-scanner
+        - input-remapper
+        - kando
+        - kde-material-you-colors
+        - libspng
+        - linuxcommandlibrary
+        - ly
+        - musl-locales
+        - nebula-gtk
+        - nwg-bar
+        - nwg-clipman
+        - nwg-displays
+        - nwg-dock
+        - nwg-dock-hyprland
+        - nwg-drawer
+        - nwg-icon-picker
+        - nwg-launchers
+        - nwg-look
+        - nwg-menu
+        - nwg-panel
+        - nwg-readme-browser
+        - nwg-shell
+        - nwg-shell-config
+        - opentyrian2000
+        - pkgconf
+        - python3-dasbus
+        - python3-geographiclib
+        - python3-geopy
+        - python3-imagehash
+        - python3-materialcolor
+        - python3-pyexiv2
+        - qca-qt6
+        - qdiskinfo
+        - quickemu-rs
+        - quickosdl
+        - quickshell
+        - regex-tui
+        - runkit-git
+        - sdbus-cpp
+        - sdkmanager
+        - shattered-pixel-dungeon
+        - spdlog
+        - tomlplusplus
+        - tuisic
+        - vbm
+        - wayscriber
+        - xdg-desktop-portal-hyprland
+        - zen-browser
+        - zig
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
+      options: --platform ${{ matrix.config.platform }} --privileged
+      volumes:
+        - /dev:/dev
+      env:
+        ARCH: '${{ matrix.config.arch }}'
+        BOOTSTRAP: '${{ matrix.config.host }}'
+        TEST: '${{ matrix.config.test }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
+          - { arch: aarch64,      host: x86_64,      libc: glibc, platform: linux/amd64, test: 0 }
+          - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
+          - { arch: aarch64-musl, host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 0 }
+
+    steps:
+      - name: Prepare container
+        run: |
+          # switch to repo-ci mirror
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          # install dependencies
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git git-lfs
+          # create non-root user
+          useradd -G xbuilder -M builder
+
+      - name: Checkout this repo
+        run: |
+          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
+          cd extra
+          git fetch --no-tags origin "${{ github.sha }}" --depth 1
+          git checkout --detach "${{ github.sha }}"
+
+      - name: Checkout void-packages
+        run: |
+          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
+          cd void-packages
+          git checkout --detach master
+
+      - name: Merge templates and edit shlibs
+        run: |
+          echo "==> copying templates..."
+          # Use inputs
+          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
+            for template in extra/srcpkgs/*; do
+              template_name=$(basename "$template")
+              original="void-packages/srcpkgs/$template_name"
+              if [ -d "$original" ]; then
+                echo "Removing old template directory: $template"
+                rm -rf "$original" || echo "Cannot remove $original"
+              fi
+              cp -rv $template void-packages/srcpkgs/
+            done
+          elif [ ! -z "${{ inputs.template }}" ]; then
+            if [ -d "void-packages/srcpkgs/${{ inputs.template }}" ]; then
+              echo "Removing old template directory: ${{ inputs.template }}"
+              rm -rf "void-packages/srcpkgs/${{ inputs.template }}" || echo "Cannot remove ${{ inputs.template }}"
+            fi
+            cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
+          elif [ ! -z "${{ inputs.templates }}" ]; then
+            for template in "extra/srcpkgs/${{ inputs.templates }}"; do
+              template_name=$(basename "$template")
+              original="void-packages/srcpkgs/$template_name"
+              if [ -d "$original" ]; then
+                echo "Removing old template directory: $template"
+                rm -rf "$original" || echo "Cannot remove $original"
+              fi
+              cp -rv $template void-packages/srcpkgs/
+            done
+          fi
+
+          SHLIBS_FILE="void-packages/common/shlibs"
+          APPEND_FILE="extra/shlibs_append"
+          REMOVE_FILE="extra/shlibs_remove"
+
+          echo "==> updating common/shlibs..."
+          if [ -f "$REMOVE_FILE" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              grep -vF "$line" "$SHLIBS_FILE" > "$SHLIBS_FILE.tmp" && mv "$SHLIBS_FILE.tmp" "$SHLIBS_FILE"
+              echo "   - removed: $line"
+            done < "$REMOVE_FILE"
+          fi
+
+          if [ -f "$APPEND_FILE" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              if ! grep -qF "$line" "$SHLIBS_FILE"; then
+                echo "$line" >> "$SHLIBS_FILE"
+                echo "   + added: $line"
+              fi
+            done < "$APPEND_FILE"
+          fi
+
+          #echo "=> applying inline edits..."
+          #if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
+          #    echo "   - removing void-packages/srcpkgs/hyprutils/patches"
+          #    rm -rf void-packages/srcpkgs/hyprutils/patches
+          #fi
+
+      - name: Prepare masterdir
+        run: |
+          cd void-packages
+          chown -R builder:builder . &&
+          sudo -Eu builder common/travis/set_mirror.sh &&
+          sudo -Eu builder common/travis/prepare.sh &&
+          common/travis/fetch-xtools.sh
+
+      - name: Build
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          cd void-packages
+          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
+            pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n")
+          elif [ ! -z "${{ inputs.template }}" ]; then
+            pkgs=${{ inputs.template }}
+          elif [ ! -z "${{ inputs.templates }}" ]; then
+            pkgs=${{ inputs.templates }}
+          fi
+
+          if [ "$BOOTSTRAP" != "$ARCH" ]; then
+              arch="-a $ARCH"
+          fi
+
+          if [ "$TEST" = 1 ]; then
+              test="-Q"
+          fi
+
+          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
+          failed=""
+
+          echo "==> Build order with dependencies:"
+          echo "$PKGS"
+          echo
+
+          for pkg in ${PKGS}; do
+            echo ''
+            echo "==> Building ${pkg}"
+            echo ''
+            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+              echo "!! build failed for ${pkg}"
+              failed="${failed} ${pkg}"
+            fi
+          done
+
+          if [ -n "${failed}" ]; then
+            echo
+            echo "Failed builds:" >> $GITHUB_STEP_SUMMARY
+            for f in ${failed}; do
+                echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
+            done
+          fi
+
+      - name: Sign packages
+        env:
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+          XBPS_ARCH: ${{ matrix.config.arch }}
+        working-directory: void-packages/hostdir/binpkgs/
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+
+          echo "==> writing private key to file..."
+          printf "%s\n" "$PRIV_KEY" > private.pem
+          chmod 600 private.pem
+
+          echo "==> merging free + nonfree"
+          if [ -d "nonfree" ]; then
+              mv nonfree/*.xbps .
+          fi
+
+          # Index and sign packages
+          xbps-rindex -a *.xbps
+          xbps-rindex -r "$PWD"
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
+          xbps-rindex -c "$PWD"
+
+          echo "==> cleaning up private key..."
+          rm -f private.pem
+
+      - name: Set release tag
+        id: set_tag
+        run: echo "tag=build-$(date +'%Y%m%d-%H%M%S')" >> "$GITHUB_OUTPUT"
+
+      - name: Push binpkgs (per arch)
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          TOKEN: ${{ secrets.TOKEN }}
+          REPO_NAME: VUR-${{ matrix.config.arch }}
+          BRANCH: bin
+        run: |
+          cd extra
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
+          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+
+          # Shallow clone
+          git clone --depth 1 --branch "$BRANCH" "$REMOTE" temp_repo || git init temp_repo
+          cd temp_repo
+
+          # Setup Git LFS
+          git lfs install || true
+          echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+          git add .gitattributes || true
+
+          # Create README from template
+          LAST_UPDATED="$(date +'%Y-%m-%d %H:%M:%S UTC')"
+          sed -e "s/\${ARCH}/${ARCH}/g" \
+           -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
+           -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
+           -e "s/\${LAST_UPDATED}/${LAST_UPDATED}/g" \
+           ../../.github/README-template.md > README.md
+
+          # Copy and push new binary packages
+          cp ../../void-packages/hostdir/binpkgs/* ./
+          git add .
+          git commit -m "Upload latest packages to repository" || echo "No changes to commit"
+          git push origin "$BRANCH"
+
+          echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
