@@ -223,11 +223,12 @@ jobs:
 
           # Create README from template
           LAST_UPDATED="$(date +'%Y-%m-%d %H:%M:%S UTC')"
+          echo $(pwd)
           sed -e "s/\${ARCH}/${ARCH}/g" \
            -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
            -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
            -e "s/\${LAST_UPDATED}/${LAST_UPDATED}/g" \
-           .github/README-template.md > README.md
+           ../.github/README-template.md > README.md
 
           # Populate and push new binary repository
           cp ../void-packages/hostdir/binpkgs/* ./
