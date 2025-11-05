@@ -53,21 +53,29 @@ jobs:
         run: |
           cd .github/workflows
           cp -f ../build-START.yml build.yml
-          while read -r line; do 
+          while read -r line; do
             echo "        - $(echo "$line")"
           done < ../templatesList >> build.yml
           cat ../build-REST.yml >> build.yml
 
       - name: "Push results"
         env:
-          TOKEN: ${{ secrets.TOKEN }}
+          TOKEN: ${{ secrets.WORKFLOWS }}
         run: |
           git config --global user.name "web-flow"
           git config --global user.email "noreply@github.com"
           git add README.md || echo "README.md not added"
           git add .github/templatesList || echo "templatesList not added"
           git add .github/workflows/build.yml || echo "build.yml not added"
+          # Remove all previous "Update templatesList" commits
+          # Find the last commit that is NOT "Update templatesList"
+          LAST_GOOD_COMMIT=$(git log --all --grep="Update templatesList" --invert-grep -n 1 --format="%H")
+          if [ -n "$LAST_GOOD_COMMIT" ]; then
+            # Reset to that commit but keep changes
+            git reset --soft "$LAST_GOOD_COMMIT"
+            git add README.md .github/templatesList .github/workflows/build.yml
+          fi
           git commit -m "Update templatesList" || echo "Nothing to commit"
-          git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
+          #git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
           git push || echo "Nothing to push"
           git status
