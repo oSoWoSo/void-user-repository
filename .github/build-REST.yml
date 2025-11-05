@@ -196,8 +196,9 @@ jobs:
       - name: Push binpkgs (per arch)
         env:
             REPO_OWNER: ${{ github.repository_owner }}
-            TOKEN: ${{ secrets.WORKFLOWS }}
-            RESULT_NAME: ${{ matrix.config.arch }}
+            TOKEN: ${{ secrets.TOKEN }}
+            REPO_NAME: VUR-${{ matrix.config.arch }}
+            BRANCH: bin
         run: |
           cd extra
           git config user.name "github-actions[bot]"
@@ -205,8 +206,8 @@ jobs:
 
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
 
-          BRANCH="bin"
-          REPO_NAME="VUR-${RESULT_NAME}"
+          #BRANCH="bin"
+          #REPO_NAME="VUR-${RESULT_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
           # Delete old binary repository, create new one
@@ -233,6 +234,6 @@ jobs:
           cp ../void-packages/hostdir/binpkgs/* ./
           git add .
           git commit -m "Upload latest packages to repository"
-          git push -f "$REMOTE" "$BRANCH"
+          git push -f "$REMOTE" HEAD:"$BRANCH"
 
           echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
