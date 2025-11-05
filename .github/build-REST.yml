@@ -174,7 +174,7 @@ jobs:
       - name: Sign packages
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
-          XBPS_ARCH: ${{ matrix.target }}
+          XBPS_ARCH: ${{ matrix.config.target }}
         working-directory: void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
