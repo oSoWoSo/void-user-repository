@@ -185,11 +185,11 @@ jobs:
 
           echo "==> merging free + nonfree"
           if [ -d "nonfree" ]; then
-              mv nonfree/*.xbps . 2>/dev/null || true
+              mv nonfree/*.xbps .
           fi
 
           # Index and sign packages
-          xbps-rindex -a *.xbps 2>/dev/null || true
+          xbps-rindex -a *.xbps
           xbps-rindex -r "$PWD"
           xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
           xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
@@ -243,7 +243,7 @@ jobs:
           
           \`\`\`bash
           sudo mkdir -p /etc/xbps.d
-          echo "repository=https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
+          echo "repository=https://github.com/${REPO_OWNER}/${REPO_NAME}/raw/refs/heads/bin" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
           \`\`\`
           
           Then update and install packages:
