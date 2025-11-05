@@ -212,8 +212,7 @@ jobs:
 
           # Delete old binary repository, create new one
           #git push "$REMOTE" -d "$BRANCH" || true
-          #git switch --orphan "$BRANCH"
-          git switch "$BRANCH" || true
+          git switch --orphan "$BRANCH"
 
           # Initialize git
           git init || true
