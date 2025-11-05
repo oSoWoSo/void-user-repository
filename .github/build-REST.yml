@@ -210,15 +210,16 @@ jobs:
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
           # Delete old binary repository, create new one
-          git push "$REMOTE" -d "$BRANCH" || true
-          git switch --orphan "$BRANCH"
+          #git push "$REMOTE" -d "$BRANCH" || true
+          #git switch --orphan "$BRANCH"
+          git switch "$BRANCH" || true
 
           # Initialize git
-          git init
+          git init || true
           # Setup Git LFS
-          git lfs install
+          git lfs install || true
           echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
-          git add .gitattributes
+          git add .gitattributes || true
 
           # Create README from template
           LAST_UPDATED="$(date +'%Y-%m-%d %H:%M:%S UTC')"
