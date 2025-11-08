@@ -20,6 +20,7 @@ hyprutils
 hyprwayland-scanner
 libspng
 ly
+nebula-gtk
 sdbus-cpp
 shattered-pixel-dungeon
 tomlplusplus

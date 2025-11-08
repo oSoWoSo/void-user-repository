@@ -7,8 +7,9 @@ on:
   #    - main
   #  paths:
   #    - 'srcpkgs/**'
+  repository_dispatch:
+    types: [build]
   workflow_dispatch:
-    description: 'If no package is selected, all templates in the branch will be compiled.'
     inputs:
       templates:
         description: 'Build multiple packages'
@@ -44,6 +45,7 @@ on:
         - hyprwayland-scanner
         - libspng
         - ly
+        - nebula-gtk
         - sdbus-cpp
         - shattered-pixel-dungeon
         - tomlplusplus
@@ -105,6 +107,7 @@ jobs:
         run: |
           echo "==> copying templates..."
           # Use inputs
+          # All templates
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             for template in extra/srcpkgs/*; do
               template_name=$(basename "$template")
@@ -115,21 +118,23 @@ jobs:
               fi
               cp -rv $template void-packages/srcpkgs/
             done
+          # Only 1 template
           elif [ ! -z "${{ inputs.template }}" ]; then
             if [ -d "void-packages/srcpkgs/${{ inputs.template }}" ]; then
               echo "Removing old template directory: ${{ inputs.template }}"
               rm -rf "void-packages/srcpkgs/${{ inputs.template }}" || echo "Cannot remove ${{ inputs.template }}"
             fi
             cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
+          # More templates
           elif [ ! -z "${{ inputs.templates }}" ]; then
-            for template in "extra/srcpkgs/${{ inputs.templates }}"; do
+            for template in "${{ inputs.templates }}"; do
               template_name=$(basename "$template")
               original="void-packages/srcpkgs/$template_name"
               if [ -d "$original" ]; then
                 echo "Removing old template directory: $template"
                 rm -rf "$original" || echo "Cannot remove $original"
               fi
-              cp -rv $template void-packages/srcpkgs/
+              cp -rv "extra/srcpkgs/$template" void-packages/srcpkgs/
             done
           fi
 
@@ -170,7 +175,7 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh &&
           common/travis/fetch-xtools.sh
 
-      - name: Build
+      - name: Lint & Build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
@@ -198,6 +203,12 @@ jobs:
           echo
 
           for pkg in ${PKGS}; do
+            echo ''
+            echo "==> Linting ${pkg}"
+            echo ''
+            for template in ${pkg}; do
+                sudo -Eu builder xlint ${template}"
+            done
             echo ''
             echo "==> Building ${pkg}"
             echo ''
