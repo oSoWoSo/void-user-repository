@@ -1,12 +1,9 @@
 name: matrix build
 
 on:
-  #push:
-  #  branches:
-  #    - master
-  #    - main
-  #  paths:
-  #    - 'srcpkgs/**'
+  pull_request:
+    paths:
+      - 'srcpkgs/**'
   repository_dispatch:
     types: [build]
   workflow_dispatch:
