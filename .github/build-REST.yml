@@ -152,7 +152,7 @@ jobs:
             echo "==> Linting ${pkg}"
             echo ''
             for template in ${pkg}; do
-                sudo -Eu builder xlint ${template}"
+                sudo -Eu builder xlint "${template}"
             done
             echo ''
             echo "==> Building ${pkg}"
