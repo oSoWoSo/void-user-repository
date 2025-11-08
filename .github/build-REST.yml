@@ -195,27 +195,22 @@ jobs:
 
       - name: Push binpkgs (per arch)
         env:
-            REPO_OWNER: ${{ github.repository_owner }}
-            TOKEN: ${{ secrets.TOKEN }}
-            REPO_NAME: VUR-${{ matrix.config.arch }}
-            BRANCH: bin
+          REPO_OWNER: ${{ github.repository_owner }}
+          TOKEN: ${{ secrets.TOKEN }}
+          REPO_NAME: VUR-${{ matrix.config.arch }}
+          BRANCH: bin
         run: |
           cd extra
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
-
-          #BRANCH="bin"
-          #REPO_NAME="VUR-${RESULT_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
-          # Delete old binary repository, create new one
-          #git push "$REMOTE" -d "$BRANCH" || true
-          git switch --orphan "$BRANCH"
+          # Shallow clone
+          git clone --depth 1 --branch "$BRANCH" "$REMOTE" temp_repo || git init temp_repo
+          cd temp_repo
 
-          # Initialize git
-          git init || true
           # Setup Git LFS
           git lfs install || true
           echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
@@ -223,17 +218,16 @@ jobs:
 
           # Create README from template
           LAST_UPDATED="$(date +'%Y-%m-%d %H:%M:%S UTC')"
-          echo $(pwd)
           sed -e "s/\${ARCH}/${ARCH}/g" \
            -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
            -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
            -e "s/\${LAST_UPDATED}/${LAST_UPDATED}/g" \
-           ../.github/README-template.md > README.md
+           ../../.github/README-template.md > README.md
 
-          # Populate and push new binary repository
-          cp ../void-packages/hostdir/binpkgs/* ./
+          # Copy and push new binary packages
+          cp ../../void-packages/hostdir/binpkgs/* ./
           git add .
-          git commit -m "Upload latest packages to repository"
-          git push -f "$REMOTE" HEAD:"$BRANCH"
+          git commit -m "Upload latest packages to repository" || echo "No changes to commit"
+          git push origin "$BRANCH"
 
           echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
