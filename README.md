@@ -35,6 +35,7 @@ If you dont wish to build the packages locally, this repository also provides pr
 | hyprutils | 0.10.1 | https://github.com/hyprwm/hyprutils | zenobit |  |
 | hyprwayland-scanner | 0.4.5 | https://github.com/hyprwm/hyprwayland-scanner | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
+| linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | nebula-gtk | 1.1.3 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
