@@ -1,12 +1,9 @@
 name: matrix build
 
 on:
-  #push:
-  #  branches:
-  #    - master
-  #    - main
-  #  paths:
-  #    - 'srcpkgs/**'
+  pull_request:
+    paths:
+      - 'srcpkgs/**'
   repository_dispatch:
     types: [build]
   workflow_dispatch:
@@ -56,10 +53,140 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
+  # Test job for PRs - builds but doesn't publish
+  test-pr:
+    name: Test PR changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
+      options: --platform ${{ matrix.config.platform }} --privileged
+      volumes:
+        - /dev:/dev
+      env:
+        ARCH: '${{ matrix.config.arch }}'
+        BOOTSTRAP: '${{ matrix.config.host }}'
+        TEST: '${{ matrix.config.test }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
+    steps:
+      - name: Prepare container
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
+          useradd -G xbuilder -M builder
+
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: extra
+
+      - name: Checkout void-packages
+        run: |
+          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
+
+      - name: Detect changed templates
+        id: detect
+        working-directory: extra
+        run: |
+          # Find changed template files in PR
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^srcpkgs/' || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No template changes detected"
+            echo "templates=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Extract unique package names
+          CHANGED_PKGS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+          echo "Changed packages: $CHANGED_PKGS"
+          echo "templates=$CHANGED_PKGS" >> $GITHUB_OUTPUT
+
+      - name: Merge changed templates
+        if: steps.detect.outputs.templates != ''
+        run: |
+          TEMPLATES_TO_PROCESS="${{ steps.detect.outputs.templates }}"
+
+          for template_name in $TEMPLATES_TO_PROCESS; do
+            SOURCE="extra/srcpkgs/$template_name"
+            DESTINATION="void-packages/srcpkgs/$template_name"
+
+            if [ ! -d "$SOURCE" ]; then
+              echo "❌ Template not found: $SOURCE"
+              continue
+            fi
+
+            echo "✅ Copying template: $template_name"
+            rm -rf "$DESTINATION"
+            cp -rv "$SOURCE" "$DESTINATION/"
+          done
+
+      - name: Prepare masterdir
+        if: steps.detect.outputs.templates != ''
+        run: |
+          cd void-packages
+          chown -R builder:builder .
+          sudo -Eu builder common/travis/set_mirror.sh
+          sudo -Eu builder common/travis/prepare.sh
+          common/travis/fetch-xtools.sh
+
+      - name: Lint & Build
+        if: steps.detect.outputs.templates != ''
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          cd void-packages
+
+          pkgs="${{ steps.detect.outputs.templates }}"
+
+          if [ "$BOOTSTRAP" != "$ARCH" ]; then
+            arch="-a $ARCH"
+          fi
+          if [ "$TEST" = 1 ]; then
+            test="-Q"
+          fi
+
+          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
+          failed=""
+
+          echo "==> Build order with dependencies:"
+          echo "$PKGS"
+          echo
+
+          for pkg in ${PKGS}; do
+            echo "==> Linting ${pkg}"
+            sudo -Eu builder xlint "${pkg}"
+
+            echo "==> Building ${pkg}"
+            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+              echo "!! build failed for ${pkg}"
+              failed="${failed} ${pkg}"
+            fi
+          done
+
+          if [ -n "${failed}" ]; then
+            echo "## ❌ Failed builds" >> $GITHUB_STEP_SUMMARY
+            for f in ${failed}; do
+              echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
+            done
+            exit 1
+          else
+            echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
+            echo "Built packages: $pkgs" >> $GITHUB_STEP_SUMMARY
+          fi
+
   build:
     name: Build packages
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -105,7 +232,9 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          # All templates
+          # Determine which templates to process
+          TEMPLATES_TO_PROCESS=""
+
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             # All templates
             TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
@@ -123,13 +252,13 @@ jobs:
             DESTINATION="void-packages/srcpkgs/$template_name"
 
             if [ ! -d "$SOURCE" ]; then
-              echo "   ⚠ Template not found: $SOURCE"
+              echo "   ❌ Template not found: $SOURCE"
               continue
             fi
 
             # If destination doesn't exist, copy immediately
             if [ ! -d "$DESTINATION" ]; then
-              echo "   ✓ New template: $template_name"
+              echo "   ✅ New template: $template_name"
               cp -rv "$SOURCE" void-packages/srcpkgs/
               continue
             fi
@@ -138,22 +267,23 @@ jobs:
             DEST_TEMPLATE="$DESTINATION/template"
 
             if [ ! -f "$SOURCE_TEMPLATE" ]; then
-              echo "   ⚠ Source template file missing: $SOURCE_TEMPLATE"
+              echo "   ❌ Source template file missing: $SOURCE_TEMPLATE"
               continue
             fi
 
             if [ ! -f "$DEST_TEMPLATE" ]; then
-              echo "   ✓ Destination template missing, copying: $template_name"
+              echo "   ✅ Destination template missing, copying: $template_name"
               rm -rf "$DESTINATION"
               cp -rv "$SOURCE" void-packages/srcpkgs/
               continue
             fi
 
             # Extract version and revision from both template files
-            SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2)
-            SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2)
-            DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2)
-            DST_REVISION=$(grep '^revision=' "$DEST_TEMPLATE" | cut -d'=' -f2)
+            # Remove quotes and whitespace
+            SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            DST_REVISION=$(grep '^revision=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 
             # Default values if not defined
             SRC_REVISION=${SRC_REVISION:-1}
@@ -167,8 +297,9 @@ jobs:
             SHOULD_UPDATE=false
 
             if [ "$SRC_VERSION" != "$DST_VERSION" ]; then
-              # Simple lexicographic version comparison
-              if [[ "$SRC_VERSION" > "$DST_VERSION" ]]; then
+              # Use sort -V for proper version comparison
+              NEWER=$(printf '%s\n%s\n' "$SRC_VERSION" "$DST_VERSION" | sort -V | tail -n1)
+              if [ "$NEWER" = "$SRC_VERSION" ]; then
                 SHOULD_UPDATE=true
               fi
             else
@@ -179,11 +310,11 @@ jobs:
             fi
 
             if [ "$SHOULD_UPDATE" = true ]; then
-              echo "   ✓ Newer version found, updating: $template_name"
+              echo "   ✅ Newer version found, updating: $template_name"
               rm -rf "$DESTINATION"
               cp -rv "$SOURCE" void-packages/srcpkgs/
             else
-              echo "   ⊘ Skipping older/same version: $template_name"
+              echo "   ❌ Skipping older/same version: $template_name"
             fi
           done
 
@@ -334,7 +465,7 @@ jobs:
                -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
                "$TEMPLATE_PATH" > README.md
             else
-              echo "ERROR: README-template.md not found!"
+              echo "❌ README-template.md not found!"
             fi
 
             git add .gitattributes README.md
