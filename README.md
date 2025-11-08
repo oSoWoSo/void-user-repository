@@ -16,6 +16,8 @@ If you dont wish to build the packages locally, this repository also provides pr
 |:--------|:--------|:---------|:-----------|:------|
 | aquamarine | 0.9.5 | https://github.com/hyprwm/aquamarine | zenobit |  |
 | glaze | 6.0.2 | https://github.com/stephenberry/glaze | zenobit |  |
+| gpu-screen-recorder | 5.6.8 | https://git.dec05eba.com/gpu-screen-recorder/ | zenobit | x86_64 i686 |
+| gpu-screen-recorder-gtk | 5.7.8 | https://git.dec05eba.com/gpu-screen-recorder-gtk/ | zenobit | x86_64 i686 |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |
 | hyprdynamicmonitors | 1.3.5 | https://github.com/fiffeek/hyprdynamicmonitors | zenobit |  |
 | hyprgraphics | 0.3.0 | https://github.com/hyprwm/hyprgraphics | zenobit |  |
