@@ -23,7 +23,6 @@ jobs:
       matrix:
         config:
           - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
-          - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
     steps:
       - name: Prepare container
         run: |
@@ -181,7 +180,9 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          # All templates
+          # Determine which templates to process
+          TEMPLATES_TO_PROCESS=""
+
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             # All templates
             TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
@@ -226,10 +227,11 @@ jobs:
             fi
 
             # Extract version and revision from both template files
-            SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2)
-            SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2)
-            DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2)
-            DST_REVISION=$(grep '^revision=' "$DEST_TEMPLATE" | cut -d'=' -f2)
+            # Remove quotes and whitespace
+            SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            DST_REVISION=$(grep '^revision=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
 
             # Default values if not defined
             SRC_REVISION=${SRC_REVISION:-1}
@@ -243,8 +245,9 @@ jobs:
             SHOULD_UPDATE=false
 
             if [ "$SRC_VERSION" != "$DST_VERSION" ]; then
-              # Simple lexicographic version comparison
-              if [[ "$SRC_VERSION" > "$DST_VERSION" ]]; then
+              # Use sort -V for proper version comparison
+              NEWER=$(printf '%s\n%s\n' "$SRC_VERSION" "$DST_VERSION" | sort -V | tail -n1)
+              if [ "$NEWER" = "$SRC_VERSION" ]; then
                 SHOULD_UPDATE=true
               fi
             else
@@ -259,7 +262,7 @@ jobs:
               rm -rf "$DESTINATION"
               cp -rv "$SOURCE" void-packages/srcpkgs/
             else
-              echo "   ⊘ Skipping older/same version: $template_name"
+              echo "   ❌ Skipping older/same version: $template_name"
             fi
           done
 
@@ -410,7 +413,7 @@ jobs:
                -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
                "$TEMPLATE_PATH" > README.md
             else
-              echo "ERROR: README-template.md not found!"
+              echo "❌ README-template.md not found!"
             fi
 
             git add .gitattributes README.md
