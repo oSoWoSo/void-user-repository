@@ -52,6 +52,7 @@ jobs:
         run: |
           echo "==> copying templates..."
           # Use inputs
+          # All templates
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             for template in extra/srcpkgs/*; do
               template_name=$(basename "$template")
@@ -62,21 +63,23 @@ jobs:
               fi
               cp -rv $template void-packages/srcpkgs/
             done
+          # Only 1 template
           elif [ ! -z "${{ inputs.template }}" ]; then
             if [ -d "void-packages/srcpkgs/${{ inputs.template }}" ]; then
               echo "Removing old template directory: ${{ inputs.template }}"
               rm -rf "void-packages/srcpkgs/${{ inputs.template }}" || echo "Cannot remove ${{ inputs.template }}"
             fi
             cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
+          # More templates
           elif [ ! -z "${{ inputs.templates }}" ]; then
-            for template in "extra/srcpkgs/${{ inputs.templates }}"; do
+            for template in "${{ inputs.templates }}"; do
               template_name=$(basename "$template")
               original="void-packages/srcpkgs/$template_name"
               if [ -d "$original" ]; then
                 echo "Removing old template directory: $template"
                 rm -rf "$original" || echo "Cannot remove $original"
               fi
-              cp -rv $template void-packages/srcpkgs/
+              cp -rv "extra/srcpkgs/$template" void-packages/srcpkgs/
             done
           fi
 

@@ -7,8 +7,9 @@ on:
   #    - main
   #  paths:
   #    - 'srcpkgs/**'
+  repository_dispatch:
+    types: [build]
   workflow_dispatch:
-    description: 'If no package is selected, all templates in the branch will be compiled.'
     inputs:
       templates:
         description: 'Build multiple packages'

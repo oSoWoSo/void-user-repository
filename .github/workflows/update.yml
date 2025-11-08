@@ -1,5 +1,4 @@
 name: Update templatesList and workflow
-
 on:
   push:
     paths:
@@ -7,11 +6,9 @@ on:
       - '.github/build-REST.yml'
       - '.github/build-START.yml'
   workflow_dispatch:
-
 permissions:
   contents: write
   actions: write
-
 jobs:
   list-templates:
     runs-on: ubuntu-latest
@@ -19,13 +16,43 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0
-          TOKEN: ${{ secrets.TOKEN }}
+          token: ${{ secrets.WORKFLOWS }}
+          fetch-depth: 2  # shallow clone
 
-      - name: Update templatesList and workflow
+      - name: Update templatesList and detect new packages
+        id: detect
         run: |
+          # Get old templatesList
+          git show HEAD~1:.github/templatesList > old_templatesList 2>/dev/null || touch old_templatesList
+
+          # Create new templateList
           rm -f .github/templatesList
-          find srcpkgs/* -maxdepth 0 -type d | cut -d'/' -f2 | tee -a .github/templatesList
+          find srcpkgs/* -maxdepth 0 -type d | cut -d'/' -f2 | sort | tee .github/templatesList
+
+          # Find new templates
+          comm -13 old_templatesList .github/templatesList > new_templates.txt
+
+          # Count new templates
+          NEW_COUNT=$(wc -l < new_templates.txt)
+          echo "new_count=$NEW_COUNT" >> $GITHUB_OUTPUT
+
+          if [ "$NEW_COUNT" -eq 1 ]; then
+            # Only 1 new template
+            SINGLE_TEMPLATE=$(cat new_templates.txt)
+            echo "single_template=$SINGLE_TEMPLATE" >> $GITHUB_OUTPUT
+            echo "templates=" >> $GITHUB_OUTPUT
+            echo "==> Found 1 new template: $SINGLE_TEMPLATE"
+          elif [ "$NEW_COUNT" -gt 1 ]; then
+            # More new templates
+            MULTIPLE_TEMPLATES=$(cat new_templates.txt | tr '\n' ' ' | sed 's/ $//')
+            echo "single_template=" >> $GITHUB_OUTPUT
+            echo "templates=$MULTIPLE_TEMPLATES" >> $GITHUB_OUTPUT
+            echo "==> Found $NEW_COUNT new templates: $MULTIPLE_TEMPLATES"
+          else
+            echo "==> No new templates found"
+            echo "single_template=" >> $GITHUB_OUTPUT
+            echo "templates=" >> $GITHUB_OUTPUT
+          fi
 
       - name: Update README
         run: |
@@ -58,7 +85,7 @@ jobs:
           done < ../templatesList >> build.yml
           cat ../build-REST.yml >> build.yml
 
-      - name: "Push results"
+      - name: Push results
         env:
           TOKEN: ${{ secrets.WORKFLOWS }}
         run: |
@@ -67,7 +94,28 @@ jobs:
           git add README.md || echo "README.md not added"
           git add .github/templatesList || echo "templatesList not added"
           git add .github/workflows/build.yml || echo "build.yml not added"
-          git commit "CI: update" || echo "Nothing to commit"
-          #git push https://TOKEN:@github.com/oSoWoSo/void-user-repository.git || echo "Nothing to push"
+          git commit -m "CI: update" || echo "Nothing to commit"
           git push || echo "Nothing to push"
           git status
+
+      - name: Trigger build workflow
+        if: steps.detect.outputs.new_count > 0
+        env:
+          GH_TOKEN: ${{ secrets.WORKFLOWS }}
+        run: |
+          NEW_COUNT="${{ steps.detect.outputs.new_count }}"
+          SINGLE="${{ steps.detect.outputs.single_template }}"
+          MULTIPLE="${{ steps.detect.outputs.templates }}"
+
+          # Wait a bit for push (Just in case)
+          sleep 5
+
+          if [ "$NEW_COUNT" -eq 1 ]; then
+            echo "==> Triggering build for single template: $SINGLE"
+            gh workflow run build.yml -f template="$SINGLE"
+          elif [ "$NEW_COUNT" -gt 1 ]; then
+            echo "==> Triggering build for multiple templates: $MULTIPLE"
+            gh workflow run build.yml -f templates="$MULTIPLE"
+          fi
+
+          echo "==> Build workflow triggered successfully"
