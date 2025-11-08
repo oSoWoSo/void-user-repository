@@ -50,9 +50,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          # Determine which templates to process
-          TEMPLATES_TO_PROCESS=""
-
+          # All templates
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             # All templates
             TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
@@ -306,7 +304,7 @@ jobs:
             [ -f "$new_pkg" ] || continue
 
             new_basename=$(basename "$new_pkg")
-            new_sig="${new_pkg}.sig"
+            new_sig="${new_pkg}.sig2"
 
             # Extract package name and version
             new_basename_no_ext=$(echo "$new_basename" | sed 's/\.xbps$//')
@@ -315,10 +313,10 @@ jobs:
             echo "Processing: $pkg_name ($pkg_version)"
 
             # Remove old versions of this package
-            old_files=$(ls "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig 2>/dev/null || true)
+            old_files=$(ls "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true)
             if [ -n "$old_files" ]; then
               echo "Removing old versions..."
-              rm -f "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig 2>/dev/null || true
+              rm -f "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true
             fi
 
             # Copy new package and signature
@@ -326,7 +324,7 @@ jobs:
             [ -f "$new_sig" ] && cp "$new_sig" ./ || true
 
             # Commit this package
-            git add "${new_basename}" "${new_basename}.sig" 2>/dev/null || git add "${new_basename}"
+            git add "${new_basename}" "${new_basename}.sig2" 2>/dev/null || git add "${new_basename}"
 
             if [ -n "$old_files" ]; then
               git commit -m "$pkg_name: update to $pkg_version" || true
