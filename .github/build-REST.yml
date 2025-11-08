@@ -117,7 +117,7 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh &&
           common/travis/fetch-xtools.sh
 
-      - name: Build
+      - name: Lint & Build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
@@ -145,6 +145,12 @@ jobs:
           echo
 
           for pkg in ${PKGS}; do
+            echo ''
+            echo "==> Linting ${pkg}"
+            echo ''
+            for template in ${pkg}; do
+                sudo -Eu builder xlint ${template}"
+            done
             echo ''
             echo "==> Building ${pkg}"
             echo ''
