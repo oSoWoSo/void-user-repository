@@ -50,43 +50,94 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          echo "==> copying templates..."
-          # Use inputs
-          # All templates
+          # Determine which templates to process
+          TEMPLATES_TO_PROCESS=""
+
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            for template in extra/srcpkgs/*; do
-              template_name=$(basename "$template")
-              original="void-packages/srcpkgs/$template_name"
-              if [ -d "$original" ]; then
-                echo "Removing old template directory: $template"
-                rm -rf "$original" || echo "Cannot remove $original"
-              fi
-              cp -rv $template void-packages/srcpkgs/
-            done
-          # Only 1 template
+            # All templates
+            TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
           elif [ ! -z "${{ inputs.template }}" ]; then
-            if [ -d "void-packages/srcpkgs/${{ inputs.template }}" ]; then
-              echo "Removing old template directory: ${{ inputs.template }}"
-              rm -rf "void-packages/srcpkgs/${{ inputs.template }}" || echo "Cannot remove ${{ inputs.template }}"
-            fi
-            cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
-          # More templates
-          elif [ ! -z "${{ inputs.templates }}" ]; then
-            for template in "${{ inputs.templates }}"; do
-              template_name=$(basename "$template")
-              original="void-packages/srcpkgs/$template_name"
-              if [ -d "$original" ]; then
-                echo "Removing old template directory: $template"
-                rm -rf "$original" || echo "Cannot remove $original"
-              fi
-              cp -rv "extra/srcpkgs/$template" void-packages/srcpkgs/
-            done
+            # Single template
+            TEMPLATES_TO_PROCESS="${{ inputs.template }}"
+          else
+            # Multiple templates (space-separated)
+            TEMPLATES_TO_PROCESS="${{ inputs.templates }}"
           fi
 
+          # Process each template
+          for template_name in $TEMPLATES_TO_PROCESS; do
+            SOURCE="extra/srcpkgs/$template_name"
+            DESTINATION="void-packages/srcpkgs/$template_name"
+
+            if [ ! -d "$SOURCE" ]; then
+              echo "   ⚠ Template not found: $SOURCE"
+              continue
+            fi
+
+            # If destination doesn't exist, copy immediately
+            if [ ! -d "$DESTINATION" ]; then
+              echo "   ✓ New template: $template_name"
+              cp -rv "$SOURCE" void-packages/srcpkgs/
+              continue
+            fi
+
+            SOURCE_TEMPLATE="$SOURCE/template"
+            DEST_TEMPLATE="$DESTINATION/template"
+
+            if [ ! -f "$SOURCE_TEMPLATE" ]; then
+              echo "   ⚠ Source template file missing: $SOURCE_TEMPLATE"
+              continue
+            fi
+
+            if [ ! -f "$DEST_TEMPLATE" ]; then
+              echo "   ✓ Destination template missing, copying: $template_name"
+              rm -rf "$DESTINATION"
+              cp -rv "$SOURCE" void-packages/srcpkgs/
+              continue
+            fi
+
+            # Extract version and revision from both template files
+            SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2)
+            SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2)
+            DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2)
+            DST_REVISION=$(grep '^revision=' "$DEST_TEMPLATE" | cut -d'=' -f2)
+
+            # Default values if not defined
+            SRC_REVISION=${SRC_REVISION:-1}
+            DST_REVISION=${DST_REVISION:-1}
+
+            echo "   Comparing: $template_name"
+            echo "     Source: $SRC_VERSION-$SRC_REVISION"
+            echo "     Dest:   $DST_VERSION-$DST_REVISION"
+
+            # Compare versions and revisions
+            SHOULD_UPDATE=false
+
+            if [ "$SRC_VERSION" != "$DST_VERSION" ]; then
+              # Simple lexicographic version comparison
+              if [[ "$SRC_VERSION" > "$DST_VERSION" ]]; then
+                SHOULD_UPDATE=true
+              fi
+            else
+              # Versions are same, compare revision numbers
+              if [ "$SRC_REVISION" -gt "$DST_REVISION" ]; then
+                SHOULD_UPDATE=true
+              fi
+            fi
+
+            if [ "$SHOULD_UPDATE" = true ]; then
+              echo "   ✓ Newer version found, updating: $template_name"
+              rm -rf "$DESTINATION"
+              cp -rv "$SOURCE" void-packages/srcpkgs/
+            else
+              echo "   ⊘ Skipping older/same version: $template_name"
+            fi
+          done
+
+          # Update shlibs
           SHLIBS_FILE="void-packages/common/shlibs"
           APPEND_FILE="extra/shlibs_append"
           REMOVE_FILE="extra/shlibs_remove"
-
           echo "==> updating common/shlibs..."
           if [ -f "$REMOVE_FILE" ]; then
             while IFS= read -r line; do
@@ -95,7 +146,6 @@ jobs:
               echo "   - removed: $line"
             done < "$REMOVE_FILE"
           fi
-
           if [ -f "$APPEND_FILE" ]; then
             while IFS= read -r line; do
               [ -z "$line" ] && continue
@@ -105,12 +155,6 @@ jobs:
               fi
             done < "$APPEND_FILE"
           fi
-
-          #echo "=> applying inline edits..."
-          #if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
-          #    echo "   - removing void-packages/srcpkgs/hyprutils/patches"
-          #    rm -rf void-packages/srcpkgs/hyprutils/patches
-          #fi
 
       - name: Prepare masterdir
         run: |
