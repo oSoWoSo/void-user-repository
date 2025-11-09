@@ -575,21 +575,10 @@ jobs:
             # Remove old versions of this package
             had_old_version=false
             if ls "${pkg_name}"-*.xbps 2>/dev/null | grep -v "^${new_basename}$" >/dev/null 2>&1; then
-              echo "  Removing old versions..."
-              ls "${pkg_name}"-*.xbps 2>/dev/null | grep -v "^${new_basename}$" | xargs rm -f
-              ls "${pkg_name}"-*.xbps.sig2 2>/dev/null | grep -v "^${new_basename}.sig2$" | xargs rm -f 2>/dev/null || true
+              echo "==> Removing old versions..."
+              ls "${pkg_name}"-*.xbps 2>/dev/null | grep -v "^${new_basename}$" | xargs git rm
+              ls "${pkg_name}"-*.xbps.sig2 2>/dev/null | grep -v "^${new_basename}.sig2$" | xargs git rm 2>/dev/null || true
               had_old_version=true
-            fi
-
-            # Remove packages without templates
-            removed="${{ needs.lint.outputs.removed }}"
-            if [ -n "$removed" ]; then
-                echo "==> removing packages for deleted templates: $removed"
-                for pkg in $removed; do
-                    rm -f ./"$pkg"-*.xbps ./"$pkg"-*.xbps.sig 2>/dev/null || true
-                    git commit -m "Remove: $pkg_name" || true
-                done
-
             fi
 
             # Copy new package and signature
@@ -614,10 +603,22 @@ jobs:
             fi
           done
 
+          # Remove packages without templates
+          removed="${{ needs.lint.outputs.removed }}"
+          if [ -n "$removed" ]; then
+            echo "==> Removing package for deleted templates: $removed"
+            for pkg in $removed; do
+              rm -f ./"$pkg"-*.xbps ./"$pkg"-*.xbps.sig2 2>/dev/null || true
+            done
+            git commit -m "Remove packages" || true
+          fi
+
           # Push all commits
           if ! git push origin "$BRANCH"; then
             echo "❌ Push failed!" >> $GITHUB_STEP_SUMMARY
             exit 1
+          else
+            git status
           fi
 
           echo "==> Successfully pushed to https://${REPO_OWNER}/${REPO_NAME}"
