@@ -1,4 +1,3 @@
-
 permissions:
   contents: write
   pull-requests: read
@@ -23,6 +22,10 @@ jobs:
       matrix:
         config:
           - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
+          - { arch: aarch64,      host: x86_64,      libc: glibc, platform: linux/amd64, test: 0 }
+          - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
+          - { arch: aarch64-musl, host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 0 }
+
     steps:
       - name: Prepare container
         run: |
@@ -31,56 +34,82 @@ jobs:
           xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
           useradd -G xbuilder -M builder
 
-      - name: Checkout PR
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          path: extra
+      - name: Checkout repo (PR head)
+        run: |
+          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
+          cd extra
+          git fetch --no-tags origin "${{ github.event.pull_request.head.sha }}" --depth 1
+          git checkout --detach "${{ github.event.pull_request.head.sha }}"
+
+      - name: Determine changed templates
+        id: changed
+        run: |
+          cd extra
+          base="${{ github.event.pull_request.base.sha }}"
+          tip="${{ github.event.pull_request.head.sha }}"
+
+          changed_pkgs=$(git diff --name-only "$base" "$tip" -- 'srcpkgs/*/template' \
+              | cut -d/ -f2 \
+              | sort -u \
+              | tr '\n' ' ')
+          removed_pkgs=$(git diff --name-status "$base" "$tip" -- 'srcpkgs/*/template' \
+              | awk '$1=="D"{print $2}' \
+              | cut -d/ -f2 \
+              | sort -u \
+              | tr '\n' ' ')
+
+          changed_pkgs="${changed_pkgs%% }"
+          removed_pkgs="${removed_pkgs%% }"
+
+          echo "Changed templates: ${changed_pkgs:-<none>}"
+          echo "Removed templates: ${removed_pkgs:-<none>}"
+
+          echo "pkgs=$changed_pkgs" >> "$GITHUB_OUTPUT"
+          echo "removed=$removed_pkgs" >> "$GITHUB_OUTPUT"
 
       - name: Checkout void-packages
+        if: steps.changed.outputs.pkgs != ''
         run: |
           git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
 
-      - name: Detect changed templates
-        id: detect
-        working-directory: extra
+      - name: Merge templates and edit shlibs
+        if: steps.changed.outputs.pkgs != ''
         run: |
-          # Find changed template files in PR
-          git fetch origin ${{ github.event.pull_request.base.ref }}
-          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^srcpkgs/' || true)
-
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "❌ No template changes detected"
-            echo "templates=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Extract unique package names
-          CHANGED_PKGS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
-          echo "Changed packages: $CHANGED_PKGS"
-          echo "templates=$CHANGED_PKGS" >> $GITHUB_OUTPUT
-
-      - name: Merge changed templates
-        if: steps.detect.outputs.templates != ''
-        run: |
-          TEMPLATES_TO_PROCESS="${{ steps.detect.outputs.templates }}"
-
-          for template_name in $TEMPLATES_TO_PROCESS; do
-            SOURCE="extra/srcpkgs/$template_name"
-            DESTINATION="void-packages/srcpkgs/$template_name"
-
-            if [ ! -d "$SOURCE" ]; then
-              echo "❌ Template not found: $SOURCE"
-              continue
+          echo "==> copying templates (changed only)..."
+          changed="${{ steps.changed.outputs.pkgs }}"
+          for pkg in $changed; do
+            if [ -d "extra/srcpkgs/$pkg" ]; then
+              echo "  Copying: $pkg"
+              rm -rf "void-packages/srcpkgs/$pkg"
+              cp -rv "extra/srcpkgs/$pkg" void-packages/srcpkgs/
             fi
-
-            echo "✅ Copying template: $template_name"
-            rm -rf "$DESTINATION"
-            cp -rv "$SOURCE" "$DESTINATION/"
           done
 
+          SHLIBS_FILE="void-packages/common/shlibs"
+          APPEND_FILE="extra/shlibs_append"
+          REMOVE_FILE="extra/shlibs_remove"
+
+          echo "==> updating common/shlibs..."
+          if [ -f "$REMOVE_FILE" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              grep -vF "$line" "$SHLIBS_FILE" > "$SHLIBS_FILE.tmp" && mv "$SHLIBS_FILE.tmp" "$SHLIBS_FILE"
+              echo "   - removed: $line"
+            done < "$REMOVE_FILE"
+          fi
+
+          if [ -f "$APPEND_FILE" ]; then
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              if ! grep -qF "$line" "$SHLIBS_FILE"; then
+                echo "$line" >> "$SHLIBS_FILE"
+                echo "   + added: $line"
+              fi
+            done < "$APPEND_FILE"
+          fi
+
       - name: Prepare masterdir
-        if: steps.detect.outputs.templates != ''
+        if: steps.changed.outputs.pkgs != ''
         run: |
           cd void-packages
           chown -R builder:builder .
@@ -89,21 +118,28 @@ jobs:
           common/travis/fetch-xtools.sh
 
       - name: Lint & Build
-        if: steps.detect.outputs.templates != ''
+        if: steps.changed.outputs.pkgs != ''
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
 
-          pkgs="${{ steps.detect.outputs.templates }}"
+          changed="${{ steps.changed.outputs.pkgs }}"
+
+          if [ -z "$changed" ]; then
+            echo "❌ No packages to build."
+            exit 0
+          fi
 
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
           fi
+
           if [ "$TEST" = 1 ]; then
             test="-Q"
           fi
 
-          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
+          echo "==> Resolving dependencies for: $changed"
+          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $changed)
           failed=""
 
           echo "==> Build order with dependencies:"
@@ -114,10 +150,17 @@ jobs:
             echo ''
             echo "==> Linting ${pkg}"
             echo ''
-            OUTPUT=$(sudo -Eu builder xlint "${pkg}")
-            if [ -n "$OUTPUT" ]; then
+
+            # Capture output and exit code
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}" 2>&1) || LINT_FAILED=true
+            if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
               echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "❌ ${pkg} lint failed, skipping build"
+              failed="${failed} ${pkg}"
+              LINT_FAILED=false  # reset for next iteration
             else
               echo "✅ ${pkg} lint passed."
               echo ''
@@ -126,6 +169,8 @@ jobs:
               if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
                 echo "❌ build failed: ${pkg}"
                 failed="${failed} ${pkg}"
+              else
+                echo "✅ ${pkg} built successfully"
               fi
             fi
           done
@@ -135,8 +180,9 @@ jobs:
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
+            #exit 1
           else
-            echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ All builds succeeded"
           fi
 
   build:
@@ -164,12 +210,9 @@ jobs:
     steps:
       - name: Prepare container
         run: |
-          # switch to repo-ci mirror
           mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
           sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          # install dependencies
           xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git git-lfs
-          # create non-root user
           useradd -G xbuilder -M builder
 
       - name: Checkout this repo
@@ -182,8 +225,6 @@ jobs:
       - name: Checkout void-packages
         run: |
           git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
-          cd void-packages
-          git checkout --detach master
 
       - name: Merge templates and edit shlibs
         run: |
@@ -193,10 +234,10 @@ jobs:
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
             # All templates
             TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
-          elif [ ! -z "${{ inputs.template }}" ]; then
+          elif [ -n "${{ inputs.template }}" ]; then
             # Single template
             TEMPLATES_TO_PROCESS="${{ inputs.template }}"
-          elif [ ! -z "${{ inputs.templates }}" ]; then
+          elif [ -n "${{ inputs.templates }}" ]; then
             # Multiple templates (space-separated)
             TEMPLATES_TO_PROCESS="${{ inputs.templates }}"
           fi
@@ -234,7 +275,6 @@ jobs:
             fi
 
             # Extract version and revision from both template files
-            # Remove quotes and whitespace
             SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
             SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
             DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
@@ -298,31 +338,37 @@ jobs:
       - name: Prepare masterdir
         run: |
           cd void-packages
-          chown -R builder:builder . &&
-          sudo -Eu builder common/travis/set_mirror.sh &&
-          sudo -Eu builder common/travis/prepare.sh &&
+          chown -R builder:builder .
+          sudo -Eu builder common/travis/set_mirror.sh
+          sudo -Eu builder common/travis/prepare.sh
           common/travis/fetch-xtools.sh
 
       - name: Lint & Build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
+
+          # Determine packages to build
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n")
-          elif [ ! -z "${{ inputs.template }}" ]; then
-            pkgs=${{ inputs.template }}
-          elif [ ! -z "${{ inputs.templates }}" ]; then
+            echo 'Building everything'
+            pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n" | tr '\n' ' ')
+          elif [ -n "${{ inputs.template }}" ]; then
+            echo 'Got one template'
+            pkgs="${{ inputs.template }}"
+          elif [ -n "${{ inputs.templates }}" ]; then
+            echo 'Got multiple templates'
             pkgs="${{ inputs.templates }}"
           fi
 
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
-              arch="-a $ARCH"
+            arch="-a $ARCH"
           fi
 
           if [ "$TEST" = 1 ]; then
-              test="-Q"
+            test="-Q"
           fi
 
+          echo "==> Resolving dependencies for: $pkgs"
           PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
           failed=""
 
@@ -334,10 +380,17 @@ jobs:
             echo ''
             echo "==> Linting ${pkg}"
             echo ''
-            OUTPUT=$(sudo -Eu builder xlint "${pkg}")
-            if [ -n "$OUTPUT" ]; then
+
+            # Capture output and exit code
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}" 2>&1) || LINT_FAILED=true
+            if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
               echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "❌ ${pkg} lint failed, skipping build"
+              failed="${failed} ${pkg}"
+              LINT_FAILED=false  # reset for next iteration
             else
               echo "✅ ${pkg} lint passed."
               echo ''
@@ -346,6 +399,8 @@ jobs:
               if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
                 echo "❌ build failed: ${pkg}"
                 failed="${failed} ${pkg}"
+              else
+                echo "✅ ${pkg} built successfully"
               fi
             fi
           done
@@ -355,8 +410,9 @@ jobs:
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
+            #exit 1
           else
-            echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
+            echo "## ✅ All builds succeeded"
           fi
 
       - name: Sign packages
@@ -373,7 +429,7 @@ jobs:
 
           echo "==> merging free + nonfree"
           if [ -d "nonfree" ]; then
-              mv nonfree/*.xbps .
+            mv nonfree/*.xbps . 2>/dev/null || true
           fi
 
           # Index and sign packages
@@ -400,45 +456,42 @@ jobs:
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
-          # Shallow clone
-          REPO_EXISTS=true
-          git clone --depth 1 --branch "$BRANCH" "$REMOTE" temp_repo || REPO_EXISTS=false
-
-          if [ "$REPO_EXISTS" = false ]; then
+          # Try to clone existing repo with branch
+          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" temp_repo 2>/dev/null; then
+            echo "==> Repository exists, using existing branch"
+            cd temp_repo
+          elif git clone --depth 1 "$REMOTE" temp_repo 2>/dev/null; then
+            echo "==> Repository exists, creating new branch"
+            cd temp_repo
+            git checkout -b "$BRANCH"
+          else
             echo "==> Initializing new repository..."
             git init temp_repo
             cd temp_repo
+            git checkout -b "$BRANCH"
 
             # Setup Git LFS
-            git lfs install || true
+            git lfs install
             echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
             git add .gitattributes
 
             # Create README from template
-            TEMPLATE_PATH=$(find "$GITHUB_WORKSPACE" -name "README-template.md")
+            TEMPLATE_PATH="../.github/README-template.md"
             if [ -f "$TEMPLATE_PATH" ]; then
               sed -e "s/\${ARCH}/${ARCH}/g" \
-               -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
-               -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
-               "$TEMPLATE_PATH" > README.md
-               git add README.md
+                -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
+                -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
+                "$TEMPLATE_PATH" > README.md
+              git add README.md
             else
-              echo "❌ README-template.md not found!"
+              echo "❌ README-template.md not found at $TEMPLATE_PATH"
             fi
 
             git commit -m "Initial commit"
-          else
-            cd temp_repo
-            # Remove last updated line from existing README if present
-            #if [ -f README.md ]; then
-            #  if grep -q "Last updated:\|Last Updated:\|last updated:" README.md; then
-            #    echo "==> Removing 'Last updated' line from README..."
-            #    sed -i '/Last updated:\|Last Updated:\|last updated:/d' README.md
-            #    git add README.md
-            #    git commit -m "Remove last updated timestamp from README" || true
-            #  fi
-            #fi
           fi
+
+          # Track .xbps files with LFS if not already tracked
+          git lfs track "*.xbps" 2>/dev/null || true
 
           # Process each package individually
           echo "==> Processing packages..."
@@ -448,38 +501,48 @@ jobs:
             new_basename=$(basename "$new_pkg")
             new_sig="${new_pkg}.sig2"
 
-            # Extract package name and version
-            new_basename_no_ext=$(echo "$new_basename" | sed 's/\.xbps$//')
-            pkg_version=$(echo "$new_basename_no_ext" | grep -oP '(?<=-)[0-9]+\.[^_]+(?=_)')
-            pkg_name=$(echo "$new_basename_no_ext" | sed -E "s/-${pkg_version}_.*//" )
+            # Extract package name and version (more robust)
+            new_basename_no_ext="${new_basename%.xbps}"
+            # Format: name-version_revision.arch
+            pkg_version=$(echo "$new_basename_no_ext" | rev | cut -d'_' -f2- | cut -d'-' -f1 | rev)
+            pkg_name=$(echo "$new_basename_no_ext" | rev | cut -d'_' -f2- | cut -d'-' -f2- | rev)
+
             echo "Processing: $pkg_name ($pkg_version)"
 
-            # Remove old versions of this package
-            old_files=$(ls "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true)
-            if [ -n "$old_files" ]; then
-              echo "Removing old versions..."
-              rm -f "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true
+            # Check if same version already exists without signature
+            missing_sig=false
+            if [ -f "${new_basename}" ] && [ ! -f "${new_basename}.sig2" ]; then
+              echo "  Same version exists but missing signature"
+              missing_sig=true
+              rm -f "${new_basename}"
             fi
 
-            # Delete version without signature
-            #signature=$(ls "${pkg_name}"-*.xbps.sig2 2>/dev/null || true)
-            #if [ -n "$old_files" ] || [ -z "$signature" ]; then
-            #  echo "Removing package without signature..."
-            #  rm -f "${pkg_name}"-*.xbps || true
-            #  nosig="yes"
-            #fi
+            # Remove old versions of this package
+            had_old_version=false
+            if ls "${pkg_name}"-*.xbps 2>/dev/null | grep -v "^${new_basename}$" >/dev/null 2>&1; then
+              echo "  Removing old versions..."
+              ls "${pkg_name}"-*.xbps 2>/dev/null | grep -v "^${new_basename}$" | xargs rm -f
+              ls "${pkg_name}"-*.xbps.sig2 2>/dev/null | grep -v "^${new_basename}.sig2$" | xargs rm -f 2>/dev/null || true
+              had_old_version=true
+            fi
 
             # Copy new package and signature
             cp "$new_pkg" ./
-            [ -f "$new_sig" ] && cp "$new_sig" ./ || true
+            if [ -f "$new_sig" ]; then
+              cp "$new_sig" ./
+            else
+              echo "❌ No signature found for $new_basename"
+            fi
 
-            # Commit this package
-            git add "${new_basename}" "${new_basename}.sig2" 2>/dev/null || git add "${new_basename}"
+            # Stage files for commit
+            git add "${new_basename}"
+            [ -f "${new_basename}.sig2" ] && git add "${new_basename}.sig2" || true
 
-            if [ -n "$old_files" ]; then
+            # Commit with appropriate message
+            if [ "$missing_sig" = true ]; then
+              git commit -m "$pkg_name: fix signature" || true
+            elif [ "$had_old_version" = true ]; then
               git commit -m "$pkg_name: update to $pkg_version" || true
-            elif [ "$nosig" = yes ]; then
-              git commit -m "$pkg_name: reupload with signature" || true
             else
               git commit -m "New package: $pkg_name-$pkg_version" || true
             fi
@@ -488,7 +551,6 @@ jobs:
           # Push all commits
           if ! git push origin "$BRANCH"; then
             echo "❌ Push failed!" >> $GITHUB_STEP_SUMMARY
-            exit 1
           fi
 
-          echo "==> Successfully pushed to ${REPO_OWNER}/${REPO_NAME}"
+          echo "==> Successfully pushed to https://${REPO_OWNER}/${REPO_NAME}"
