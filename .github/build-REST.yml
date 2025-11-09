@@ -124,6 +124,10 @@ jobs:
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
           echo "removed=$removed" >> "$GITHUB_OUTPUT"
 
+          if [ -z "$packages" ]; then
+            echo "❌ No packages to lint"
+            exit 0
+          fi
 
   # Test job for PRs - builds but doesn't publish
   test-pr:
@@ -440,7 +444,7 @@ jobs:
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
-            #exit 1
+            exit 1
           else
             echo "## ✅ All builds succeeded"
           fi
@@ -485,7 +489,7 @@ jobs:
           rm -f private.pem
 
       - name: Push binpkgs (per arch)
-        if: steps.check_builds.outputs.has_packages == 'true'
+        if: steps.check_builds.outputs.has_packages == 'true' || needs.lint.outputs.removed != ''
         env:
           REPO_OWNER: ${{ github.repository_owner }}
           TOKEN: ${{ secrets.TOKEN }}
@@ -567,6 +571,17 @@ jobs:
               ls "${pkg_name}"-*.xbps 2>/dev/null | grep -v "^${new_basename}$" | xargs rm -f
               ls "${pkg_name}"-*.xbps.sig2 2>/dev/null | grep -v "^${new_basename}.sig2$" | xargs rm -f 2>/dev/null || true
               had_old_version=true
+            fi
+
+            # Remove packages without templates
+            removed="${{ needs.lint.outputs.removed }}"
+            if [ -n "$removed" ]; then
+                echo "==> removing packages for deleted templates: $removed"
+                for pkg in $removed; do
+                    rm -f ./"$pkg"-*.xbps ./"$pkg"-*.xbps.sig 2>/dev/null || true
+                    git commit -m "Remove: $pkg_name" || true
+                done
+
             fi
 
             # Copy new package and signature
