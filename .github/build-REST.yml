@@ -50,7 +50,7 @@ jobs:
           CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^srcpkgs/' || true)
 
           if [ -z "$CHANGED_FILES" ]; then
-            echo "No template changes detected"
+            echo "❌ No template changes detected"
             echo "templates=" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -112,11 +112,15 @@ jobs:
 
           for pkg in ${PKGS}; do
             echo "==> Linting ${pkg}"
-            sudo -Eu builder xlint "${pkg}"
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}")
+            if [ $? -ne 0 ]; then
+              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+            fi
 
             echo "==> Building ${pkg}"
             if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "!! build failed for ${pkg}"
+              echo "❌ build failed: ${pkg}"
               failed="${failed} ${pkg}"
             fi
           done
@@ -126,7 +130,6 @@ jobs:
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
-            exit 1
           else
             echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
             echo "Built packages: $pkgs" >> $GITHUB_STEP_SUMMARY
@@ -189,7 +192,7 @@ jobs:
           elif [ ! -z "${{ inputs.template }}" ]; then
             # Single template
             TEMPLATES_TO_PROCESS="${{ inputs.template }}"
-          else
+          elif [ ! -z "${{ inputs.templates }}" ]; then
             # Multiple templates (space-separated)
             TEMPLATES_TO_PROCESS="${{ inputs.templates }}"
           fi
@@ -200,13 +203,13 @@ jobs:
             DESTINATION="void-packages/srcpkgs/$template_name"
 
             if [ ! -d "$SOURCE" ]; then
-              echo "   ❌ Template not found: $SOURCE"
+              echo "❌ Template not found: $SOURCE"
               continue
             fi
 
             # If destination doesn't exist, copy immediately
             if [ ! -d "$DESTINATION" ]; then
-              echo "   ✅ New template: $template_name"
+              echo "✅ New template: $template_name"
               cp -rv "$SOURCE" void-packages/srcpkgs/
               continue
             fi
@@ -215,12 +218,12 @@ jobs:
             DEST_TEMPLATE="$DESTINATION/template"
 
             if [ ! -f "$SOURCE_TEMPLATE" ]; then
-              echo "   ❌ Source template file missing: $SOURCE_TEMPLATE"
+              echo "❌ Source template file missing: $SOURCE_TEMPLATE"
               continue
             fi
 
             if [ ! -f "$DEST_TEMPLATE" ]; then
-              echo "   ✅ Destination template missing, copying: $template_name"
+              echo "✅ Destination template missing, copying: $template_name"
               rm -rf "$DESTINATION"
               cp -rv "$SOURCE" void-packages/srcpkgs/
               continue
@@ -237,9 +240,9 @@ jobs:
             SRC_REVISION=${SRC_REVISION:-1}
             DST_REVISION=${DST_REVISION:-1}
 
-            echo "   Comparing: $template_name"
-            echo "     Source: $SRC_VERSION-$SRC_REVISION"
-            echo "     Dest:   $DST_VERSION-$DST_REVISION"
+            echo "Comparing: $template_name"
+            echo "  Source: $SRC_VERSION-$SRC_REVISION"
+            echo "  Dest:   $DST_VERSION-$DST_REVISION"
 
             # Compare versions and revisions
             SHOULD_UPDATE=false
@@ -258,11 +261,11 @@ jobs:
             fi
 
             if [ "$SHOULD_UPDATE" = true ]; then
-              echo "   ✅ Newer version found, updating: $template_name"
+              echo "✅ Newer version found, updating: $template_name"
               rm -rf "$DESTINATION"
               cp -rv "$SOURCE" void-packages/srcpkgs/
             else
-              echo "   ❌ Skipping older/same version: $template_name"
+              echo "❌ Skipping older/same version: $template_name"
             fi
           done
 
@@ -327,24 +330,27 @@ jobs:
             echo ''
             echo "==> Linting ${pkg}"
             echo ''
-            for template in ${pkg}; do
-                sudo -Eu builder xlint "${template}"
-            done
-            echo ''
-            echo "==> Building ${pkg}"
-            echo ''
-            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "!! build failed for ${pkg}"
-              failed="${failed} ${pkg}"
-            fi
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}")
+            if [ $? -ne 0 ]; then
+              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+            elif
+              echo ''
+              echo "==> Building ${pkg}"
+              echo ''
+              if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+                echo "❌ build failed: ${pkg}"
+                failed="${failed} ${pkg}"
+              fi
           done
 
           if [ -n "${failed}" ]; then
-            echo
-            echo "Failed builds:" >> $GITHUB_STEP_SUMMARY
+            echo "## ❌ Failed builds" >> $GITHUB_STEP_SUMMARY
             for f in ${failed}; do
-                echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
+              echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
+          else
+            echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Sign packages
