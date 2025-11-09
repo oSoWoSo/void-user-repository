@@ -3,10 +3,134 @@ permissions:
   pull-requests: read
 
 jobs:
+  lint:
+    name: Lint templates
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-glibc-full:20250616R1
+      options: --platform linux/amd64
+    outputs:
+      packages: ${{ steps.lint.outputs.packages }}
+      removed: ${{ steps.lint.outputs.removed }}
+    steps:
+      - name: Prepare container
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git git-lfs
+          useradd -G xbuilder -M builder
+
+      - name: Checkout this repo
+        run: |
+          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
+          cd extra
+          git fetch --no-tags origin "${{ github.sha }}" --depth 1
+          git checkout --detach "${{ github.sha }}"
+
+      - name: Checkout void-packages
+        run: |
+          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
+
+      - name: Prepare masterdir
+        run: |
+          cd void-packages
+          chown -R builder:builder .
+          sudo -Eu builder common/travis/set_mirror.sh
+          sudo -Eu builder common/travis/prepare.sh
+          common/travis/fetch-xtools.sh
+
+      - name: Lint
+        id: lint
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          cd void-packages
+          # Determine which templates to process
+          packages=""
+          removed=""
+
+          if [ "${{ inputs.all }}" == 'true' ]; then
+            # All templates
+            packages=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
+          elif [ -n "${{ inputs.template }}" ]; then
+            # Single template
+            packages="${{ inputs.template }}"
+          elif [ -n "${{ inputs.templates }}" ]; then
+            # Multiple templates (space-separated)
+            packages="${{ inputs.templates }}"
+          else
+            cd extra
+            base="${{ github.event.pull_request.base.sha }}"
+            tip="${{ github.event.pull_request.head.sha }}"
+
+            changed_pkgs=$(git diff --name-only "$base" "$tip" -- 'srcpkgs/*/template' \
+              | cut -d/ -f2 \
+              | sort -u \
+              | tr '\n' ' ')
+            removed_pkgs=$(git diff --name-status "$base" "$tip" -- 'srcpkgs/*/template' \
+              | awk '$1=="D"{print $2}' \
+              | cut -d/ -f2 \
+              | sort -u \
+              | tr '\n' ' ')
+
+            changed_pkgs="${changed_pkgs%% }"
+            removed_pkgs="${removed_pkgs%% }"
+
+            echo "Changed templates: ${changed_pkgs:-<none>}"
+            echo "Removed templates: ${removed_pkgs:-<none>}"
+
+            packages=${changed_pkgs}
+            removed=${removed_pkgs}
+            cd ..
+          fi
+
+          if [ -z "$packages" ]; then
+            echo "No packages to lint"
+            exit 0
+          fi
+
+          # Lint templates
+          cd void-packages
+          failed=""
+          for template_name in $packages; do
+            SOURCE="extra/srcpkgs/$template_name"
+            DESTINATION="void-packages/srcpkgs/$template_name"
+
+            if [ ! -d "$SOURCE" ]; then
+              echo "❌ Template not found: $SOURCE"
+              continue
+            fi
+
+            rm -rf "$DESTINATION"
+            cp -rv "$SOURCE" void-packages/srcpkgs/
+            echo ''
+            echo "==> Linting ${template_name}"
+            echo ''
+
+            # Capture output and exit code
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}" 2>&1) || LINT_FAILED=true
+            if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
+              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "❌ ${pkg} lint failed, skipping build"
+              failed="${failed} ${pkg}"
+              LINT_FAILED=false  # reset for next iteration
+            else
+              echo "✅ ${pkg} lint passed."
+            fi
+          done
+
+          # Set outputs
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          echo "removed=$removed" >> "$GITHUB_OUTPUT"
+
+
   # Test job for PRs - builds but doesn't publish
   test-pr:
     name: Test PR changes
-    if: github.event_name == 'pull_request'
+    needs: lint
+    if: github.event_name == 'pull_request' && needs.lint.outputs.packages != ''
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -41,42 +165,14 @@ jobs:
           git fetch --no-tags origin "${{ github.event.pull_request.head.sha }}" --depth 1
           git checkout --detach "${{ github.event.pull_request.head.sha }}"
 
-      - name: Determine changed templates
-        id: changed
-        run: |
-          cd extra
-          base="${{ github.event.pull_request.base.sha }}"
-          tip="${{ github.event.pull_request.head.sha }}"
-
-          changed_pkgs=$(git diff --name-only "$base" "$tip" -- 'srcpkgs/*/template' \
-              | cut -d/ -f2 \
-              | sort -u \
-              | tr '\n' ' ')
-          removed_pkgs=$(git diff --name-status "$base" "$tip" -- 'srcpkgs/*/template' \
-              | awk '$1=="D"{print $2}' \
-              | cut -d/ -f2 \
-              | sort -u \
-              | tr '\n' ' ')
-
-          changed_pkgs="${changed_pkgs%% }"
-          removed_pkgs="${removed_pkgs%% }"
-
-          echo "Changed templates: ${changed_pkgs:-<none>}"
-          echo "Removed templates: ${removed_pkgs:-<none>}"
-
-          echo "pkgs=$changed_pkgs" >> "$GITHUB_OUTPUT"
-          echo "removed=$removed_pkgs" >> "$GITHUB_OUTPUT"
-
       - name: Checkout void-packages
-        if: steps.changed.outputs.pkgs != ''
         run: |
           git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
 
       - name: Merge templates and edit shlibs
-        if: steps.changed.outputs.pkgs != ''
         run: |
           echo "==> copying templates (changed only)..."
-          changed="${{ steps.changed.outputs.pkgs }}"
+          changed="${{ needs.lint.outputs.packages }}"
           for pkg in $changed; do
             if [ -d "extra/srcpkgs/$pkg" ]; then
               echo "  Copying: $pkg"
@@ -109,7 +205,6 @@ jobs:
           fi
 
       - name: Prepare masterdir
-        if: steps.changed.outputs.pkgs != ''
         run: |
           cd void-packages
           chown -R builder:builder .
@@ -117,18 +212,12 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh
           common/travis/fetch-xtools.sh
 
-      - name: Lint & Build
-        if: steps.changed.outputs.pkgs != ''
+      - name: Build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
 
-          changed="${{ steps.changed.outputs.pkgs }}"
-
-          if [ -z "$changed" ]; then
-            echo "❌ No packages to build."
-            exit 0
-          fi
+          changed="${{ needs.lint.outputs.packages }}"
 
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
@@ -147,22 +236,6 @@ jobs:
           echo
 
           for pkg in ${PKGS}; do
-            echo ''
-            echo "==> Linting ${pkg}"
-            echo ''
-
-            # Capture output and exit code
-            OUTPUT=$(sudo -Eu builder xlint "${pkg}" 2>&1) || LINT_FAILED=true
-            if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
-              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "❌ ${pkg} lint failed, skipping build"
-              failed="${failed} ${pkg}"
-              LINT_FAILED=false  # reset for next iteration
-            else
-              echo "✅ ${pkg} lint passed."
               echo ''
               echo "==> Building ${pkg}"
               echo ''
@@ -172,7 +245,6 @@ jobs:
               else
                 echo "✅ ${pkg} built successfully"
               fi
-            fi
           done
 
           if [ -n "${failed}" ]; then
@@ -182,12 +254,13 @@ jobs:
             done
             #exit 1
           else
-            echo "## ✅ All builds succeeded"
+            echo "✅ All builds succeeded"
           fi
 
   build:
-    name: Build packages
-    if: github.event_name != 'pull_request'
+    name: Build templates
+    needs: lint
+    if: github.event_name != 'pull_request' && needs.lint.outputs.packages != ''
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -228,22 +301,8 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          # Determine which templates to process
-          TEMPLATES_TO_PROCESS=""
-
-          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            # All templates
-            TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
-          elif [ -n "${{ inputs.template }}" ]; then
-            # Single template
-            TEMPLATES_TO_PROCESS="${{ inputs.template }}"
-          elif [ -n "${{ inputs.templates }}" ]; then
-            # Multiple templates (space-separated)
-            TEMPLATES_TO_PROCESS="${{ inputs.templates }}"
-          fi
-
-          # Process each template
-          for template_name in $TEMPLATES_TO_PROCESS; do
+          packages="${{ needs.lint.outputs.packages }}"
+          for template_name in $packages; do
             SOURCE="extra/srcpkgs/$template_name"
             DESTINATION="void-packages/srcpkgs/$template_name"
 
@@ -343,22 +402,11 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh
           common/travis/fetch-xtools.sh
 
-      - name: Lint & Build
+      - name: Build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-
-          # Determine packages to build
-          if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            echo 'Building everything'
-            pkgs=$(find ../extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f\n" | tr '\n' ' ')
-          elif [ -n "${{ inputs.template }}" ]; then
-            echo 'Got one template'
-            pkgs="${{ inputs.template }}"
-          elif [ -n "${{ inputs.templates }}" ]; then
-            echo 'Got multiple templates'
-            pkgs="${{ inputs.templates }}"
-          fi
+          packages="${{ needs.lint.outputs.packages }}"
 
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
@@ -368,8 +416,8 @@ jobs:
             test="-Q"
           fi
 
-          echo "==> Resolving dependencies for: $pkgs"
-          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
+          echo "==> Resolving dependencies for: $packages"
+          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $packages)
           failed=""
 
           echo "==> Build order with dependencies:"
@@ -377,22 +425,6 @@ jobs:
           echo
 
           for pkg in ${PKGS}; do
-            echo ''
-            echo "==> Linting ${pkg}"
-            echo ''
-
-            # Capture output and exit code
-            OUTPUT=$(sudo -Eu builder xlint "${pkg}" 2>&1) || LINT_FAILED=true
-            if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
-              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "❌ ${pkg} lint failed, skipping build"
-              failed="${failed} ${pkg}"
-              LINT_FAILED=false  # reset for next iteration
-            else
-              echo "✅ ${pkg} lint passed."
               echo ''
               echo "==> Building ${pkg}"
               echo ''
@@ -402,7 +434,6 @@ jobs:
               else
                 echo "✅ ${pkg} built successfully"
               fi
-            fi
           done
 
           if [ -n "${failed}" ]; then
@@ -564,6 +595,7 @@ jobs:
           # Push all commits
           if ! git push origin "$BRANCH"; then
             echo "❌ Push failed!" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
 
           echo "==> Successfully pushed to https://${REPO_OWNER}/${REPO_NAME}"
