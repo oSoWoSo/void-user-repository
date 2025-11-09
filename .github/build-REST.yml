@@ -459,6 +459,14 @@ jobs:
               rm -f "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true
             fi
 
+            # Delete version without signature
+            signature=$(ls "${pkg_name}"-*.xbps.sig2 2>/dev/null || true)
+            if [ -n "$old_files" ] || [ -z "$signature" ]; then
+              echo "Removing package without signature..."
+              rm -f "${pkg_name}"-*.xbps || true
+              nosig="yes"
+            fi
+
             # Copy new package and signature
             cp "$new_pkg" ./
             [ -f "$new_sig" ] && cp "$new_sig" ./ || true
@@ -468,6 +476,8 @@ jobs:
 
             if [ -n "$old_files" ]; then
               git commit -m "$pkg_name: update to $pkg_version" || true
+            elif [ "$nosig" == yes ]; then
+              git commit -m "$pkg_name: reupload with signature" || true
             else
               git commit -m "New package: $pkg_name-$pkg_version" || true
             fi
