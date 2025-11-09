@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-glibc-full:20250616R1
-      options: --platform linux/amd64
+      options: --platform linux/amd64 --privileged
     outputs:
       packages: ${{ steps.lint.outputs.packages }}
       removed: ${{ steps.lint.outputs.removed }}
