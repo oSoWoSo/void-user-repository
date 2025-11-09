@@ -43,7 +43,6 @@ jobs:
         id: lint
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          cd void-packages
           # Determine which templates to process
           packages=""
           removed=""
@@ -51,12 +50,18 @@ jobs:
           if [ ${{ inputs.all }} = true ]; then
             # All templates
             packages=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
+            echo "Choosen packages:"
+            echo "${packages:-<none>}"
           elif [ -n "${{ inputs.template }}" ]; then
             # Single template
             packages="${{ inputs.template }}"
+            echo "Choosen packages:"
+            echo "${packages:-<none>}"
           elif [ -n "${{ inputs.templates }}" ]; then
             # Multiple templates (space-separated)
             packages="${{ inputs.templates }}"
+            echo "Choosen packages:"
+            echo "${packages:-<none>}"
           else
             cd extra
             base="${{ github.event.pull_request.base.sha }}"
@@ -80,7 +85,7 @@ jobs:
 
             packages=${changed_pkgs}
             removed=${removed_pkgs}
-            cd ../void-packages
+            cd ..
           fi
 
           if [ -z "$packages" ]; then
@@ -90,20 +95,21 @@ jobs:
 
           # Lint templates
           failed=""
+          cd void-packages
           for template_name in $packages; do
-            SOURCE="extra/srcpkgs/$template_name"
-            DESTINATION="void-packages/srcpkgs/$template_name"
+            SOURCE="../extra/srcpkgs/$template_name"
+            DESTINATION="srcpkgs/$template_name"
 
             if [ ! -d "$SOURCE" ]; then
               echo "❌ Template not found: $SOURCE"
               continue
             fi
 
+            echo "==> Copying ${template_name}"
             rm -rf "$DESTINATION"
-            cp -rv "$SOURCE" void-packages/srcpkgs/
+            cp -rv "$SOURCE" srcpkgs/
             echo ''
             echo "==> Linting ${template_name}"
-            echo ''
 
             # Capture output and exit code
             OUTPUT=$(sudo -Eu builder xlint "${template_name}" 2>&1) || LINT_FAILED=true
@@ -112,11 +118,13 @@ jobs:
               echo '```' >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "❌ ${template_name} lint failed, skipping build"
+              echo "❌ ${template_name} lint failed"
+              echo ''
               failed="${failed} ${template_name}"
               LINT_FAILED=false  # reset for next iteration
             else
               echo "✅ ${template_name} lint passed."
+              echo ''
             fi
           done
 
