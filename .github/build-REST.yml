@@ -132,7 +132,6 @@ jobs:
             done
           else
             echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
-            echo "Built packages: $pkgs" >> $GITHUB_STEP_SUMMARY
           fi
 
   build:
@@ -342,6 +341,7 @@ jobs:
                 echo "❌ build failed: ${pkg}"
                 failed="${failed} ${pkg}"
               fi
+            fi
           done
 
           if [ -n "${failed}" ]; then
