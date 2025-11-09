@@ -123,7 +123,7 @@ jobs:
             else
               echo "✅ ${template_name} lint passed"
             fi
-            echo ''
+            echo
           done
 
           if [ -n "${failed}" ]; then
@@ -246,9 +246,11 @@ jobs:
               echo "❌ build failed: ${pkg}"
               failed="${failed} ${pkg}"
             else
+              echo
               echo "✅ ${pkg} built successfully"
             fi
-            echo ''
+            echo
+            echo
           done
 
           if [ -n "${failed}" ]; then
@@ -258,6 +260,7 @@ jobs:
             done
             exit 1
           else
+            echo
             echo "✅ All builds succeeded"
           fi
 
@@ -433,9 +436,11 @@ jobs:
               echo "❌ build failed: ${pkg}"
               failed="${failed} ${pkg}"
             else
+              echo
               echo "✅ ${pkg} built successfully"
             fi
-            echo ''
+            echo
+            echo
           done
 
           if [ -n "${failed}" ]; then
