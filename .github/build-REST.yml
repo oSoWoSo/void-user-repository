@@ -48,7 +48,7 @@ jobs:
           packages=""
           removed=""
 
-          if [ "${{ inputs.all }}" == 'true' ]; then
+          if [ ${{ inputs.all }} = true ]; then
             # All templates
             packages=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
           elif [ -n "${{ inputs.template }}" ]; then
@@ -80,7 +80,7 @@ jobs:
 
             packages=${changed_pkgs}
             removed=${removed_pkgs}
-            cd ..
+            cd ../void-packages
           fi
 
           if [ -z "$packages" ]; then
@@ -89,7 +89,6 @@ jobs:
           fi
 
           # Lint templates
-          cd void-packages
           failed=""
           for template_name in $packages; do
             SOURCE="extra/srcpkgs/$template_name"
@@ -107,17 +106,17 @@ jobs:
             echo ''
 
             # Capture output and exit code
-            OUTPUT=$(sudo -Eu builder xlint "${pkg}" 2>&1) || LINT_FAILED=true
+            OUTPUT=$(sudo -Eu builder xlint "${template_name}" 2>&1) || LINT_FAILED=true
             if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
-              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo "## ❌ ${template_name} lint failed:" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "❌ ${pkg} lint failed, skipping build"
-              failed="${failed} ${pkg}"
+              echo "❌ ${template_name} lint failed, skipping build"
+              failed="${failed} ${template_name}"
               LINT_FAILED=false  # reset for next iteration
             else
-              echo "✅ ${pkg} lint passed."
+              echo "✅ ${template_name} lint passed."
             fi
           done
 
