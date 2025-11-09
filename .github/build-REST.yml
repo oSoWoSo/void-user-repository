@@ -415,7 +415,19 @@ jobs:
             echo "## ✅ All builds succeeded"
           fi
 
+      - name: Check build results
+        id: check_builds
+        run: |
+          if [ -d "void-packages/hostdir/binpkgs" ] && [ -n "$(ls -A void-packages/hostdir/binpkgs/*.xbps 2>/dev/null)" ]; then
+            echo "has_packages=true" >> $GITHUB_OUTPUT
+            echo "✅ Found packages to sign and publish"
+          else
+            echo "has_packages=false" >> $GITHUB_OUTPUT
+            echo "⚠️ No packages were built successfully"
+          fi
+
       - name: Sign packages
+        if: steps.check_builds.outputs.has_packages == 'true'
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.config.arch }}
@@ -443,6 +455,7 @@ jobs:
           rm -f private.pem
 
       - name: Push binpkgs (per arch)
+        if: steps.check_builds.outputs.has_packages == 'true'
         env:
           REPO_OWNER: ${{ github.repository_owner }}
           TOKEN: ${{ secrets.TOKEN }}
