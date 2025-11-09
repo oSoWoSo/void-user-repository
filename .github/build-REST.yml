@@ -49,19 +49,19 @@ jobs:
 
           if [ ${{ inputs.all }} = true ]; then
             # All templates
-            packages=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
+            pkgs=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
             echo "Choosen packages:"
-            echo "${packages:-<none>}"
+            echo "${pkgs:-<none>}"
           elif [ -n "${{ inputs.template }}" ]; then
             # Single template
-            packages="${{ inputs.template }}"
+            pkgs="${{ inputs.template }}"
             echo "Choosen packages:"
-            echo "${packages:-<none>}"
+            echo "${pkgs:-<none>}"
           elif [ -n "${{ inputs.templates }}" ]; then
             # Multiple templates (space-separated)
-            packages="${{ inputs.templates }}"
+            pkgs="${{ inputs.templates }}"
             echo "Choosen packages:"
-            echo "${packages:-<none>}"
+            echo "${pkgs:-<none>}"
           else
             cd extra
             base="${{ github.event.pull_request.base.sha }}"
@@ -83,12 +83,12 @@ jobs:
             echo "Changed templates: ${changed_pkgs:-<none>}"
             echo "Removed templates: ${removed_pkgs:-<none>}"
 
-            packages=${changed_pkgs}
-            removed=${removed_pkgs}
+            pkgs=${changed_pkgs}
+            remo=${removed_pkgs}
             cd ..
           fi
 
-          if [ -z "$packages" ]; then
+          if [ -z "$pkgs" ]; then
             echo "No packages to lint"
             exit 0
           fi
@@ -96,7 +96,7 @@ jobs:
           # Lint templates
           failed=""
           cd void-packages
-          for template_name in $packages; do
+          for template_name in $pkgs; do
             SOURCE="../extra/srcpkgs/$template_name"
             DESTINATION="srcpkgs/$template_name"
 
@@ -108,7 +108,6 @@ jobs:
             echo "==> Copying ${template_name}"
             rm -rf "$DESTINATION"
             cp -rv "$SOURCE" srcpkgs/
-            echo ''
             echo "==> Linting ${template_name}"
 
             # Capture output and exit code
@@ -128,14 +127,15 @@ jobs:
             fi
           done
 
-          # Set outputs
-          echo "packages=$packages" >> "$GITHUB_OUTPUT"
-          echo "removed=$removed" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$packages" ]; then
+          if [ -z "$pkgs" ]; then
             echo "❌ No packages to lint"
             exit 0
           fi
+
+          # Set outputs
+          echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
+          echo "removed=$remo" >> "$GITHUB_OUTPUT"
 
   # Test job for PRs - builds but doesn't publish
   test-pr:
