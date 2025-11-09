@@ -468,43 +468,19 @@ jobs:
             echo "⚠️ No packages were built successfully"
           fi
 
-      - name: Sign packages
-        if: steps.check_builds.outputs.has_packages == 'true'
+      - name: Sign and push packages
+        if: steps.check_builds.outputs.has_packages == 'true' || needs.lint.outputs.removed != ''
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.config.arch }}
-        working-directory: void-packages/hostdir/binpkgs/
-        run: |
-          export PATH="/opt/xbps/usr/bin/:$PATH"
-
-          echo "==> writing private key to file..."
-          printf "%s\n" "$PRIV_KEY" > private.pem
-          chmod 600 private.pem
-
-          echo "==> merging free + nonfree"
-          if [ -d "nonfree" ]; then
-            mv nonfree/*.xbps . 2>/dev/null || true
-          fi
-
-          # Index and sign packages
-          xbps-rindex -a *.xbps || true
-          xbps-rindex -r "$PWD"
-          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
-          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
-          xbps-rindex -c "$PWD"
-
-          echo "==> cleaning up private key..."
-          rm -f private.pem
-
-      - name: Push binpkgs (per arch)
-        if: steps.check_builds.outputs.has_packages == 'true' || needs.lint.outputs.removed != ''
-        env:
           REPO_OWNER: ${{ github.repository_owner }}
-          TOKEN: ${{ secrets.TOKEN }}
           REPO_NAME: VUR-${{ matrix.config.arch }}
           BRANCH: bin
+          TOKEN: ${{ secrets.TOKEN }}
         run: |
           cd extra
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          REMOTE="https://$REPO_OWNER:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
@@ -583,15 +559,15 @@ jobs:
 
             # Copy new package and signature
             cp "$new_pkg" ./
-            if [ -f "$new_sig" ]; then
-              cp "$new_sig" ./
-            else
-              echo "❌ No signature found for $new_basename"
-            fi
+            #if [ -f "$new_sig" ]; then
+            #  cp "$new_sig" ./
+            #else
+            #  echo "❌ No signature found for $new_basename"
+            #fi
 
             # Stage files for commit
             git add "${new_basename}"
-            [ -f "${new_basename}.sig2" ] && git add "${new_basename}.sig2" || true
+            #[ -f "${new_basename}.sig2" ] && git add "${new_basename}.sig2" || true
 
             # Commit with appropriate message
             if [ "$missing_sig" = true ]; then
@@ -608,10 +584,32 @@ jobs:
           if [ -n "$removed" ]; then
             echo "==> Removing package for deleted templates: $removed"
             for pkg in $removed; do
-              rm -f ./"$pkg"-*.xbps ./"$pkg"-*.xbps.sig2 2>/dev/null || true
+              git rm ./"$pkg"-*.xbps 2>/dev/null || true
+              git rm ./"$pkg"-*.xbps.sig2 2>/dev/null || true
             done
             git commit -m "Remove packages" || true
           fi
+
+          echo "==> writing private key to file..."
+          printf "%s\n" "$PRIV_KEY" > private.pem
+          chmod 600 private.pem
+
+          echo "==> merging free + nonfree"
+          if [ -d "nonfree" ]; then
+            mv nonfree/*.xbps . 2>/dev/null || true
+          fi
+
+          # Index and sign packages
+          xbps-rindex -a *.xbps || true
+          xbps-rindex -r "$PWD"
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
+          xbps-rindex -c "$PWD"
+
+          echo "==> cleaning up private key..."
+          rm -f private.pem
+          git add .
+          git commit -m "Update repodata and signatures"
 
           # Push all commits
           if ! git push origin "$BRANCH"; then
