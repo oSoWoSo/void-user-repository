@@ -49,17 +49,17 @@ jobs:
 
           if [ ${{ inputs.all }} = true ]; then
             # All templates
-            pkgs=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
+            pkgs=$(find extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
             echo "Choosen packages:"
             echo "${pkgs:-<none>}"
           elif [ -n "${{ inputs.template }}" ]; then
             # Single template
-            pkgs="${{ inputs.template }}"
+            pkgs=$(printf '%s ' ${{ inputs.templates }} | sed 's/ $//')
             echo "Choosen packages:"
             echo "${pkgs:-<none>}"
           elif [ -n "${{ inputs.templates }}" ]; then
             # Multiple templates (space-separated)
-            pkgs="${{ inputs.templates }}"
+            pkgs=$(printf '%s ' ${{ inputs.templates }} | sed 's/ $//')
             echo "Choosen packages:"
             echo "${pkgs:-<none>}"
           else
@@ -127,15 +127,18 @@ jobs:
             fi
           done
 
-
           if [ -z "$pkgs" ]; then
             echo "❌ No packages to lint"
             exit 0
           fi
 
           # Set outputs
-          echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
-          echo "removed=$remo" >> "$GITHUB_OUTPUT"
+          if [ -n "$pkgs" ]; then
+            echo "packages=$pkgs" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$remo" ]; then
+            echo "removed=$remo" >> "$GITHUB_OUTPUT"
+          fi
 
   # Test job for PRs - builds but doesn't publish
   test-pr:
