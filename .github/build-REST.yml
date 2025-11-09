@@ -111,17 +111,22 @@ jobs:
           echo
 
           for pkg in ${PKGS}; do
+            echo ''
             echo "==> Linting ${pkg}"
+            echo ''
             OUTPUT=$(sudo -Eu builder xlint "${pkg}")
-            if [ $? -ne 0 ]; then
+            if [ -n "$OUTPUT" ]; then
               echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
-            fi
-
-            echo "==> Building ${pkg}"
-            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "❌ build failed: ${pkg}"
-              failed="${failed} ${pkg}"
+            else
+              echo "✅ ${pkg} lint passed."
+              echo ''
+              echo "==> Building ${pkg}"
+              echo ''
+              if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+                echo "❌ build failed: ${pkg}"
+                failed="${failed} ${pkg}"
+              fi
             fi
           done
 
@@ -132,7 +137,6 @@ jobs:
             done
           else
             echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
-            echo "Built packages: $pkgs" >> $GITHUB_STEP_SUMMARY
           fi
 
   build:
@@ -331,10 +335,11 @@ jobs:
             echo "==> Linting ${pkg}"
             echo ''
             OUTPUT=$(sudo -Eu builder xlint "${pkg}")
-            if [ $? -ne 0 ]; then
+            if [ -n "$OUTPUT" ]; then
               echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
-            elif
+            else
+              echo "✅ ${pkg} lint passed."
               echo ''
               echo "==> Building ${pkg}"
               echo ''
@@ -342,6 +347,7 @@ jobs:
                 echo "❌ build failed: ${pkg}"
                 failed="${failed} ${pkg}"
               fi
+            fi
           done
 
           if [ -n "${failed}" ]; then

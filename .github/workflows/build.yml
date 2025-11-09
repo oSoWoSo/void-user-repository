@@ -1,14 +1,12 @@
 name: matrix build
 
 on:
-  #push:
-  #  branches:
-  #    - master
-  #    - main
-  #  paths:
-  #    - 'srcpkgs/**'
+  pull_request:
+    paths:
+      - 'srcpkgs/**'
+  repository_dispatch:
+    types: [build]
   workflow_dispatch:
-    description: 'If no package is selected, all templates in the branch will be compiled.'
     inputs:
       templates:
         description: 'Build multiple packages'
@@ -43,7 +41,9 @@ on:
         - hyprutils
         - hyprwayland-scanner
         - libspng
+        - linuxcommandlibrary
         - ly
+        - nebula-gtk
         - sdbus-cpp
         - shattered-pixel-dungeon
         - tomlplusplus
@@ -54,10 +54,147 @@ on:
 
 permissions:
   contents: write
+  pull-requests: read
 
 jobs:
+  # Test job for PRs - builds but doesn't publish
+  test-pr:
+    name: Test PR changes
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
+      options: --platform ${{ matrix.config.platform }} --privileged
+      volumes:
+        - /dev:/dev
+      env:
+        ARCH: '${{ matrix.config.arch }}'
+        BOOTSTRAP: '${{ matrix.config.host }}'
+        TEST: '${{ matrix.config.test }}'
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
+    steps:
+      - name: Prepare container
+        run: |
+          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
+          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
+          useradd -G xbuilder -M builder
+
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          path: extra
+
+      - name: Checkout void-packages
+        run: |
+          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
+
+      - name: Detect changed templates
+        id: detect
+        working-directory: extra
+        run: |
+          # Find changed template files in PR
+          git fetch origin ${{ github.event.pull_request.base.ref }}
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.event.pull_request.base.ref }}...HEAD | grep '^srcpkgs/' || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "❌ No template changes detected"
+            echo "templates=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Extract unique package names
+          CHANGED_PKGS=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+          echo "Changed packages: $CHANGED_PKGS"
+          echo "templates=$CHANGED_PKGS" >> $GITHUB_OUTPUT
+
+      - name: Merge changed templates
+        if: steps.detect.outputs.templates != ''
+        run: |
+          TEMPLATES_TO_PROCESS="${{ steps.detect.outputs.templates }}"
+
+          for template_name in $TEMPLATES_TO_PROCESS; do
+            SOURCE="extra/srcpkgs/$template_name"
+            DESTINATION="void-packages/srcpkgs/$template_name"
+
+            if [ ! -d "$SOURCE" ]; then
+              echo "❌ Template not found: $SOURCE"
+              continue
+            fi
+
+            echo "✅ Copying template: $template_name"
+            rm -rf "$DESTINATION"
+            cp -rv "$SOURCE" "$DESTINATION/"
+          done
+
+      - name: Prepare masterdir
+        if: steps.detect.outputs.templates != ''
+        run: |
+          cd void-packages
+          chown -R builder:builder .
+          sudo -Eu builder common/travis/set_mirror.sh
+          sudo -Eu builder common/travis/prepare.sh
+          common/travis/fetch-xtools.sh
+
+      - name: Lint & Build
+        if: steps.detect.outputs.templates != ''
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          cd void-packages
+
+          pkgs="${{ steps.detect.outputs.templates }}"
+
+          if [ "$BOOTSTRAP" != "$ARCH" ]; then
+            arch="-a $ARCH"
+          fi
+          if [ "$TEST" = 1 ]; then
+            test="-Q"
+          fi
+
+          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $pkgs)
+          failed=""
+
+          echo "==> Build order with dependencies:"
+          echo "$PKGS"
+          echo
+
+          for pkg in ${PKGS}; do
+            echo ''
+            echo "==> Linting ${pkg}"
+            echo ''
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}")
+            if [ -n "$OUTPUT" ]; then
+              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ ${pkg} lint passed."
+              echo ''
+              echo "==> Building ${pkg}"
+              echo ''
+              if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+                echo "❌ build failed: ${pkg}"
+                failed="${failed} ${pkg}"
+              fi
+            fi
+          done
+
+          if [ -n "${failed}" ]; then
+            echo "## ❌ Failed builds" >> $GITHUB_STEP_SUMMARY
+            for f in ${failed}; do
+              echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
+          fi
+
   build:
     name: Build packages
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -103,40 +240,96 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          echo "==> copying templates..."
-          # Use inputs
+          # Determine which templates to process
+          TEMPLATES_TO_PROCESS=""
+
           if [ -z "${{ inputs.template }}" ] && [ -z "${{ inputs.templates }}" ]; then
-            for template in extra/srcpkgs/*; do
-              template_name=$(basename "$template")
-              original="void-packages/srcpkgs/$template_name"
-              if [ -d "$original" ]; then
-                echo "Removing old template directory: $template"
-                rm -rf "$original" || echo "Cannot remove $original"
-              fi
-              cp -rv $template void-packages/srcpkgs/
-            done
+            # All templates
+            TEMPLATES_TO_PROCESS=$(find extra/srcpkgs/* -maxdepth 0 -type d -exec basename {} \;)
           elif [ ! -z "${{ inputs.template }}" ]; then
-            if [ -d "void-packages/srcpkgs/${{ inputs.template }}" ]; then
-              echo "Removing old template directory: ${{ inputs.template }}"
-              rm -rf "void-packages/srcpkgs/${{ inputs.template }}" || echo "Cannot remove ${{ inputs.template }}"
-            fi
-            cp -rv extra/srcpkgs/${{ inputs.template }} void-packages/srcpkgs/
+            # Single template
+            TEMPLATES_TO_PROCESS="${{ inputs.template }}"
           elif [ ! -z "${{ inputs.templates }}" ]; then
-            for template in "extra/srcpkgs/${{ inputs.templates }}"; do
-              template_name=$(basename "$template")
-              original="void-packages/srcpkgs/$template_name"
-              if [ -d "$original" ]; then
-                echo "Removing old template directory: $template"
-                rm -rf "$original" || echo "Cannot remove $original"
-              fi
-              cp -rv $template void-packages/srcpkgs/
-            done
+            # Multiple templates (space-separated)
+            TEMPLATES_TO_PROCESS="${{ inputs.templates }}"
           fi
 
+          # Process each template
+          for template_name in $TEMPLATES_TO_PROCESS; do
+            SOURCE="extra/srcpkgs/$template_name"
+            DESTINATION="void-packages/srcpkgs/$template_name"
+
+            if [ ! -d "$SOURCE" ]; then
+              echo "❌ Template not found: $SOURCE"
+              continue
+            fi
+
+            # If destination doesn't exist, copy immediately
+            if [ ! -d "$DESTINATION" ]; then
+              echo "✅ New template: $template_name"
+              cp -rv "$SOURCE" void-packages/srcpkgs/
+              continue
+            fi
+
+            SOURCE_TEMPLATE="$SOURCE/template"
+            DEST_TEMPLATE="$DESTINATION/template"
+
+            if [ ! -f "$SOURCE_TEMPLATE" ]; then
+              echo "❌ Source template file missing: $SOURCE_TEMPLATE"
+              continue
+            fi
+
+            if [ ! -f "$DEST_TEMPLATE" ]; then
+              echo "✅ Destination template missing, copying: $template_name"
+              rm -rf "$DESTINATION"
+              cp -rv "$SOURCE" void-packages/srcpkgs/
+              continue
+            fi
+
+            # Extract version and revision from both template files
+            # Remove quotes and whitespace
+            SRC_VERSION=$(grep '^version=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            SRC_REVISION=$(grep '^revision=' "$SOURCE_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            DST_VERSION=$(grep '^version=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+            DST_REVISION=$(grep '^revision=' "$DEST_TEMPLATE" | cut -d'=' -f2 | tr -d '"' | tr -d "'" | xargs)
+
+            # Default values if not defined
+            SRC_REVISION=${SRC_REVISION:-1}
+            DST_REVISION=${DST_REVISION:-1}
+
+            echo "Comparing: $template_name"
+            echo "  Source: $SRC_VERSION-$SRC_REVISION"
+            echo "  Dest:   $DST_VERSION-$DST_REVISION"
+
+            # Compare versions and revisions
+            SHOULD_UPDATE=false
+
+            if [ "$SRC_VERSION" != "$DST_VERSION" ]; then
+              # Use sort -V for proper version comparison
+              NEWER=$(printf '%s\n%s\n' "$SRC_VERSION" "$DST_VERSION" | sort -V | tail -n1)
+              if [ "$NEWER" = "$SRC_VERSION" ]; then
+                SHOULD_UPDATE=true
+              fi
+            else
+              # Versions are same, compare revision numbers
+              if [ "$SRC_REVISION" -gt "$DST_REVISION" ]; then
+                SHOULD_UPDATE=true
+              fi
+            fi
+
+            if [ "$SHOULD_UPDATE" = true ]; then
+              echo "✅ Newer version found, updating: $template_name"
+              rm -rf "$DESTINATION"
+              cp -rv "$SOURCE" void-packages/srcpkgs/
+            else
+              echo "❌ Skipping older/same version: $template_name"
+            fi
+          done
+
+          # Update shlibs
           SHLIBS_FILE="void-packages/common/shlibs"
           APPEND_FILE="extra/shlibs_append"
           REMOVE_FILE="extra/shlibs_remove"
-
           echo "==> updating common/shlibs..."
           if [ -f "$REMOVE_FILE" ]; then
             while IFS= read -r line; do
@@ -145,7 +338,6 @@ jobs:
               echo "   - removed: $line"
             done < "$REMOVE_FILE"
           fi
-
           if [ -f "$APPEND_FILE" ]; then
             while IFS= read -r line; do
               [ -z "$line" ] && continue
@@ -156,12 +348,6 @@ jobs:
             done < "$APPEND_FILE"
           fi
 
-          #echo "=> applying inline edits..."
-          #if [ -d "void-packages/srcpkgs/hyprutils/patches" ]; then
-          #    echo "   - removing void-packages/srcpkgs/hyprutils/patches"
-          #    rm -rf void-packages/srcpkgs/hyprutils/patches
-          #fi
-
       - name: Prepare masterdir
         run: |
           cd void-packages
@@ -170,7 +356,7 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh &&
           common/travis/fetch-xtools.sh
 
-      - name: Build
+      - name: Lint & Build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
@@ -199,20 +385,31 @@ jobs:
 
           for pkg in ${PKGS}; do
             echo ''
-            echo "==> Building ${pkg}"
+            echo "==> Linting ${pkg}"
             echo ''
-            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "!! build failed for ${pkg}"
-              failed="${failed} ${pkg}"
+            OUTPUT=$(sudo -Eu builder xlint "${pkg}")
+            if [ -n "$OUTPUT" ]; then
+              echo "## ❌ ${pkg} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "✅ ${pkg} lint passed."
+              echo ''
+              echo "==> Building ${pkg}"
+              echo ''
+              if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
+                echo "❌ build failed: ${pkg}"
+                failed="${failed} ${pkg}"
+              fi
             fi
           done
 
           if [ -n "${failed}" ]; then
-            echo
-            echo "Failed builds:" >> $GITHUB_STEP_SUMMARY
+            echo "## ❌ Failed builds" >> $GITHUB_STEP_SUMMARY
             for f in ${failed}; do
-                echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
+              echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
+          else
+            echo "## ✅ All builds succeeded" >> $GITHUB_STEP_SUMMARY
           fi
 
       - name: Sign packages
@@ -281,7 +478,7 @@ jobs:
                -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
                "$TEMPLATE_PATH" > README.md
             else
-              echo "ERROR: README-template.md not found!"
+              echo "❌ README-template.md not found!"
             fi
 
             git add .gitattributes README.md
@@ -306,7 +503,7 @@ jobs:
             [ -f "$new_pkg" ] || continue
 
             new_basename=$(basename "$new_pkg")
-            new_sig="${new_pkg}.sig"
+            new_sig="${new_pkg}.sig2"
 
             # Extract package name and version
             new_basename_no_ext=$(echo "$new_basename" | sed 's/\.xbps$//')
@@ -315,10 +512,18 @@ jobs:
             echo "Processing: $pkg_name ($pkg_version)"
 
             # Remove old versions of this package
-            old_files=$(ls "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig 2>/dev/null || true)
+            old_files=$(ls "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true)
             if [ -n "$old_files" ]; then
               echo "Removing old versions..."
-              rm -f "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig 2>/dev/null || true
+              rm -f "${pkg_name}"-*.xbps "${pkg_name}"-*.xbps.sig2 2>/dev/null || true
+            fi
+
+            # Delete version without signature
+            signature=$(ls "${pkg_name}"-*.xbps.sig2 2>/dev/null || true)
+            if [ -n "$old_files" ] || [ -z "$signature" ]; then
+              echo "Removing package without signature..."
+              rm -f "${pkg_name}"-*.xbps || true
+              nosig="yes"
             fi
 
             # Copy new package and signature
@@ -326,10 +531,12 @@ jobs:
             [ -f "$new_sig" ] && cp "$new_sig" ./ || true
 
             # Commit this package
-            git add "${new_basename}" "${new_basename}.sig" 2>/dev/null || git add "${new_basename}"
+            git add "${new_basename}" "${new_basename}.sig2" 2>/dev/null || git add "${new_basename}"
 
             if [ -n "$old_files" ]; then
               git commit -m "$pkg_name: update to $pkg_version" || true
+            elif [ "$nosig" == yes ]; then
+              git commit -m "$pkg_name: reupload with signature" || true
             else
               git commit -m "New package: $pkg_name-$pkg_version" || true
             fi
