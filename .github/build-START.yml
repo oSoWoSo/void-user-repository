@@ -21,5 +21,5 @@ on:
         description: 'Build single package'
         required: false
         type: choice
-        default:
         options:
+        -
