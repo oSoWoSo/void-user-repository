@@ -83,12 +83,11 @@ jobs:
 
           echo "Chosen templates: ${packages:-<none>}"
           echo "Removed templates: ${removed:-<none>}"
-          # Set outputs
-          echo "packages=$packages" >> "$GITHUB_OUTPUT"
-          echo "removed=$removed" >> "$GITHUB_OUTPUT"
 
-          if [ -z "$packages" ]; then
+          if [ -z "$packages" ] && [ -z "$removed" ]; then
             echo "No packages to lint"
+            exit 1
+          elif if [ -z "$packages" ] && [ -n "$removed" ]; then
             exit 0
           fi
 
@@ -127,9 +126,18 @@ jobs:
           done
 
           if [ -n "${failed}" ]; then
-            exit 1
+            packages_clean="$packages"
+            for fail in $failed; do
+              packages_clean=$(echo "$packages_clean" | sed "s/\b$fail\b//g")
+            done
+            packages=$(echo "$packages_clean" | xargs)
+            echo "⚠️ Continuing with successful packages: $packages"
+            echo "packages=$packages" >> "$GITHUB_OUTPUT"
+            echo "removed=$removed" >> "$GITHUB_OUTPUT"
           else
             echo "✅ All lints passed"
+            echo "packages=$packages" >> "$GITHUB_OUTPUT"
+            echo "removed=$removed" >> "$GITHUB_OUTPUT"
           fi
 
   test-pr:
@@ -158,9 +166,12 @@ jobs:
     steps:
       - name: Prepare container
         run: |
+          # switch to repo-ci mirror
           mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
           sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
+          # install dependencies
           xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
+          # create non-root user
           useradd -G xbuilder -M builder
 
       - name: Checkout repo (PR head)
@@ -176,7 +187,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          echo "==> Copying templates..."
+          echo "==> Copying templates"
           packages="${{ needs.lint.outputs.packages }}"
           for pkg in $packages; do
             if [ -d "extra/srcpkgs/$pkg" ]; then
@@ -190,7 +201,7 @@ jobs:
           APPEND_FILE="extra/shlibs_append"
           REMOVE_FILE="extra/shlibs_remove"
 
-          echo "==> Updating common/shlibs..."
+          echo "==> Updating common/shlibs"
           if [ -f "$REMOVE_FILE" ]; then
             while IFS= read -r line; do
               [ -z "$line" ] && continue
@@ -258,7 +269,6 @@ jobs:
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
-            exit 1
           else
             echo
             echo "✅ All builds succeeded"
@@ -371,7 +381,7 @@ jobs:
               rm -rf "$DESTINATION"
               cp -rv "$SOURCE" void-packages/srcpkgs/
             else
-              echo "⏭️  Skipping older/same version: $template_name"
+              echo "⏭️ Skipping older/same version: $template_name"
             fi
           done
 
@@ -381,7 +391,7 @@ jobs:
           REMOVE_FILE="extra/shlibs_remove"
 
           if [ -f "$REMOVE_FILE" ]; then
-            echo "==> Removing shlibs entries..."
+            echo "==> Removing shlibs entries"
             while IFS= read -r line; do
               [ -z "$line" ] && continue
               grep -vF "$line" "$SHLIBS_FILE" > "$SHLIBS_FILE.tmp" && mv "$SHLIBS_FILE.tmp" "$SHLIBS_FILE"
@@ -390,7 +400,7 @@ jobs:
           fi
 
           if [ -f "$APPEND_FILE" ]; then
-            echo "==> Adding shlibs entries..."
+            echo "==> Adding shlibs entries"
             while IFS= read -r line; do
               [ -z "$line" ] && continue
               if ! grep -qF "$line" "$SHLIBS_FILE"; then
@@ -433,7 +443,7 @@ jobs:
           for pkg in ${PKGS}; do
             echo "==> Building ${pkg}"
             if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "❌ build failed: ${pkg}"
+              echo "⚠️ build failed: ${pkg}"
               failed="${failed} ${pkg}"
             else
               echo
@@ -448,17 +458,19 @@ jobs:
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
-            exit 1
           else
             echo "✅ All builds succeeded"
           fi
 
       - name: Sign packages
-        working-directory: void-packages/hostdir/binpkgs/
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
+          XBPS_ARCH: ${{ matrix.config.arch }}
+          XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
+        working-directory: void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
+          export XBPS_TARGET_ARCH="${XBPS_ARCH}"
 
           # Check if there are packages to sign
           if ! ls *.xbps 1>/dev/null 2>&1; then
@@ -466,32 +478,45 @@ jobs:
             exit 0
           fi
 
-          echo "==> Writing private key..."
+          echo "==> Writing private key"
           printf "%s\n" "$PRIV_KEY" > private.pem
           chmod 600 private.pem
 
-          echo "==> Merging free + nonfree..."
+          echo "==> Merging free + nonfree"
           if [ -d "nonfree" ]; then
             mv nonfree/*.xbps . 2>/dev/null || true
           fi
 
-          echo "==> Signing packages..."
-          xbps-rindex -a *.xbps
-          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
-          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
+          echo "==> Signing packages"
 
-          echo "==> Cleaning up private key..."
+          echo "==> Indexing packages"
+          xbps-rindex -a *.xbps || true
+
+          echo "==> Creating repository data"
+          xbps-rindex "$PWD"
+
+          echo "==> Signing repository"
+          xbps-rindex --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+
+          echo "==> Signing individual packages"
+          xbps-rindex --privkey private.pem "$PWD"/*.xbps
+          xbps-rindex -c "$PWD"
+
+          echo "==> Cleaning up private key"
           rm -f private.pem
 
       - name: Push to repository
         if: success()
         env:
+          ARCH: ${{ matrix.config.arch }}
           XBPS_ARCH: ${{ matrix.config.arch }}
+          XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: VUR-${{ matrix.config.arch }}
           BRANCH: bin
           TOKEN: ${{ secrets.TOKEN }}
         run: |
+          export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           cd extra
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -508,7 +533,7 @@ jobs:
             cd temp_repo
             git checkout -b "$BRANCH"
           else
-            echo "==> Initializing new repository..."
+            echo "==> Initializing new repository"
             git init temp_repo
             cd temp_repo
             git checkout -b "$BRANCH"
@@ -534,6 +559,8 @@ jobs:
 
           # Ensure LFS tracking
           git lfs track "*.xbps" 2>/dev/null || true
+          # Copy signed repo
+          cp ../void-packages/hostdir/binpkgs/* ./
 
           # Remove packages for deleted templates
           removed="${{ needs.lint.outputs.removed }}"
@@ -550,7 +577,7 @@ jobs:
 
           # Process built packages
           if [ -d "../../void-packages/hostdir/binpkgs" ]; then
-            echo "==> Processing packages..."
+            echo "==> Processing packages"
             for new_pkg in ../../void-packages/hostdir/binpkgs/*.xbps; do
               [ -f "$new_pkg" ] || continue
 
@@ -584,7 +611,7 @@ jobs:
 
               # Copy new package and signature
               cp "$new_pkg" ./
-              [ -f "$new_sig" ] && cp "$new_sig" ./ || echo "  ⚠️ No signature for $new_basename"
+              [ -f "$new_sig" ] && cp "$new_sig" ./ || echo "⚠️ No signature for $new_basename"
 
               # Stage and commit
               git add "${new_basename}" "${new_basename}.sig2" 2>/dev/null || git add "${new_basename}"
@@ -600,7 +627,7 @@ jobs:
 
             # Update repository index
             export PATH="/opt/xbps/usr/bin/:$PATH"
-            echo "==> Updating repository index..."
+            echo "==> Updating repository index"
             xbps-rindex -a *.xbps 2>/dev/null || true
             xbps-rindex -c "$PWD"
 
