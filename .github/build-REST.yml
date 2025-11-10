@@ -133,11 +133,15 @@ jobs:
             packages=$(echo "$packages_clean" | xargs)
             echo "⚠️ Continuing with successful packages: $packages"
             echo "packages=$packages" >> "$GITHUB_OUTPUT"
-            echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            if [ -n "$removed" ]; then
+              echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "✅ All lints passed"
             echo "packages=$packages" >> "$GITHUB_OUTPUT"
-            echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            if [ -n "$removed" ]; then
+              echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
   test-pr:
