@@ -87,7 +87,7 @@ jobs:
           if [ -z "$packages" ] && [ -z "$removed" ]; then
             echo "No packages to lint"
             exit 1
-          elif if [ -z "$packages" ] && [ -n "$removed" ]; then
+          elif [ -z "$packages" ] && [ -n "$removed" ]; then
             exit 0
           fi
 
