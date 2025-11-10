@@ -469,8 +469,13 @@ jobs:
       - name: Sign packages
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
+          ARCH: ${{ matrix.config.arch }}
           XBPS_ARCH: ${{ matrix.config.arch }}
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: VUR-${{ matrix.config.arch }}
+          BRANCH: bin
+          TOKEN: ${{ secrets.TOKEN }}
         working-directory: void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
@@ -497,7 +502,7 @@ jobs:
           xbps-rindex -a *.xbps || true
 
           echo "==> Creating repository data"
-          xbps-rindex "$PWD"
+          xbps-rindex -s "$PWD"
 
           echo "==> Signing repository"
           xbps-rindex --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
@@ -564,7 +569,7 @@ jobs:
           # Ensure LFS tracking
           git lfs track "*.xbps" 2>/dev/null || true
           # Copy signed repo
-          cp ../void-packages/hostdir/binpkgs/* ./
+          cp ../../void-packages/hostdir/binpkgs/* ./
 
           # Remove packages for deleted templates
           removed="${{ needs.lint.outputs.removed }}"
@@ -633,7 +638,7 @@ jobs:
             export PATH="/opt/xbps/usr/bin/:$PATH"
             echo "==> Updating repository index"
             xbps-rindex -a *.xbps 2>/dev/null || true
-            xbps-rindex -c "$PWD"
+            #xbps-rindex -c "$PWD"
 
             git add "${{ matrix.config.arch }}-repodata" 2>/dev/null || true
             git commit -m "Update repository index" || true
