@@ -24,6 +24,7 @@ on:
         options:
         -
         - aquamarine
+        - btrfs-progs
         - glaze
         - hyprcursor
         - hyprdynamicmonitors
@@ -143,7 +144,7 @@ jobs:
           if [ -z "$packages" ] && [ -z "$removed" ]; then
             echo "No packages to lint"
             exit 1
-          elif if [ -z "$packages" ] && [ -n "$removed" ]; then
+          elif [ -z "$packages" ] && [ -n "$removed" ]; then
             exit 0
           fi
 
@@ -189,11 +190,15 @@ jobs:
             packages=$(echo "$packages_clean" | xargs)
             echo "⚠️ Continuing with successful packages: $packages"
             echo "packages=$packages" >> "$GITHUB_OUTPUT"
-            echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            if [ -n "$removed" ]; then
+              echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "✅ All lints passed"
             echo "packages=$packages" >> "$GITHUB_OUTPUT"
-            echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            if [ -n "$removed" ]; then
+              echo "removed=$removed" >> "$GITHUB_OUTPUT"
+            fi
           fi
 
   test-pr:
@@ -521,8 +526,13 @@ jobs:
       - name: Sign packages
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
+          ARCH: ${{ matrix.config.arch }}
           XBPS_ARCH: ${{ matrix.config.arch }}
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: VUR-${{ matrix.config.arch }}
+          BRANCH: bin
+          TOKEN: ${{ secrets.TOKEN }}
         working-directory: void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
@@ -549,7 +559,7 @@ jobs:
           xbps-rindex -a *.xbps || true
 
           echo "==> Creating repository data"
-          xbps-rindex "$PWD"
+          xbps-rindex -s "$PWD"
 
           echo "==> Signing repository"
           xbps-rindex --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
@@ -616,7 +626,7 @@ jobs:
           # Ensure LFS tracking
           git lfs track "*.xbps" 2>/dev/null || true
           # Copy signed repo
-          cp ../void-packages/hostdir/binpkgs/* ./
+          cp ../../void-packages/hostdir/binpkgs/* ./
 
           # Remove packages for deleted templates
           removed="${{ needs.lint.outputs.removed }}"
@@ -685,7 +695,7 @@ jobs:
             export PATH="/opt/xbps/usr/bin/:$PATH"
             echo "==> Updating repository index"
             xbps-rindex -a *.xbps 2>/dev/null || true
-            xbps-rindex -c "$PWD"
+            #xbps-rindex -c "$PWD"
 
             git add "${{ matrix.config.arch }}-repodata" 2>/dev/null || true
             git commit -m "Update repository index" || true
