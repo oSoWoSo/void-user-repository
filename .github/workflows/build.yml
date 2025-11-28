@@ -525,7 +525,7 @@ jobs:
                 -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
                 -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
                 "$TEMPLATE_PATH" > README.md
-              git add README.md
+              git add README.md 
             fi
 
             git commit -m "Initial commit"
@@ -534,9 +534,6 @@ jobs:
 
           # Ensure LFS tracking
           git lfs track "*.xbps" 2>/dev/null || true
-          # Copy signed repo
-          cp ../../void-packages/hostdir/binpkgs/* ./
-          
 
       - name: Build packages
         run: |
@@ -649,20 +646,18 @@ jobs:
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
-          cd void-packages/hostdir
-
           # Clone or init repository
-          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" binpkgs 2>/dev/null; then
+          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" temp_repo 2>/dev/null; then
             echo "==> Repository exists, using existing branch"
             cd temp_repo
-          elif git clone --depth 1 "$REMOTE" binpkgs 2>/dev/null; then
+          elif git clone --depth 1 "$REMOTE" temp_repo 2>/dev/null; then
             echo "==> Repository exists, creating new branch"
             cd temp_repo
             git checkout -b "$BRANCH"
           else
             echo "==> Initializing new repository"
-            git init binpkgs
-            cd binpkgs
+            git init temp_repo
+            cd temp_repo
             git checkout -b "$BRANCH"
 
             # Setup Git LFS
