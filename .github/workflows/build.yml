@@ -479,6 +479,65 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh
           common/travis/fetch-xtools.sh
 
+      - name: Clone repo
+        env:
+          ARCH: ${{ matrix.config.arch }}
+          XBPS_ARCH: ${{ matrix.config.arch }}
+          XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: VUR-${{ matrix.config.arch }}
+          BRANCH: bin
+          TOKEN: ${{ secrets.TOKEN }}
+        run: |
+          export XBPS_TARGET_ARCH="${XBPS_ARCH}"
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
+          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
+
+          cd void-packages/hostdir
+
+          # Clone or init repository
+          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" binpkgs 2>/dev/null; then
+            echo "==> Repository exists, using existing branch"
+            cd temp_repo
+          elif git clone --depth 1 "$REMOTE" binpkgs 2>/dev/null; then
+            echo "==> Repository exists, creating new branch"
+            cd temp_repo
+            git checkout -b "$BRANCH"
+          else
+            echo "==> Initializing new repository"
+            git init binpkgs
+            cd binpkgs
+            git checkout -b "$BRANCH"
+
+            # Setup Git LFS
+            git lfs install
+            echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
+            git add .gitattributes
+
+            # Create README
+            TEMPLATE_PATH="../.github/README-template.md"
+            if [ -f "$TEMPLATE_PATH" ]; then
+              sed -e "s/\${ARCH}/${ARCH}/g" \
+                -e "s/\${REPO_OWNER}/${REPO_OWNER}/g" \
+                -e "s/\${REPO_NAME}/${REPO_NAME}/g" \
+                "$TEMPLATE_PATH" > README.md
+              git add README.md
+            fi
+
+            git commit -m "Initial commit"
+            git push -u origin "$BRANCH"
+          fi
+
+          # Ensure LFS tracking
+          git lfs track "*.xbps" 2>/dev/null || true
+          # Copy signed repo
+          cp ../../void-packages/hostdir/binpkgs/* ./
+          
+
       - name: Build packages
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
@@ -590,18 +649,20 @@ jobs:
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
 
+          cd void-packages/hostdir
+
           # Clone or init repository
-          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" temp_repo 2>/dev/null; then
+          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" binpkgs 2>/dev/null; then
             echo "==> Repository exists, using existing branch"
             cd temp_repo
-          elif git clone --depth 1 "$REMOTE" temp_repo 2>/dev/null; then
+          elif git clone --depth 1 "$REMOTE" binpkgs 2>/dev/null; then
             echo "==> Repository exists, creating new branch"
             cd temp_repo
             git checkout -b "$BRANCH"
           else
             echo "==> Initializing new repository"
-            git init temp_repo
-            cd temp_repo
+            git init binpkgs
+            cd binpkgs
             git checkout -b "$BRANCH"
 
             # Setup Git LFS
