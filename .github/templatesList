@@ -23,6 +23,7 @@ libspng
 linuxcommandlibrary
 ly
 nebula-gtk
+quickemu
 sdbus-cpp
 shattered-pixel-dungeon
 tomlplusplus
