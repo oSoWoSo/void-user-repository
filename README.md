@@ -1,5 +1,3 @@
-# Void-User-Repository
-
 ## DISCLAIMER
 
 This project is **not affiliated with or endorsed by the Void Linux project** or its maintainers.
