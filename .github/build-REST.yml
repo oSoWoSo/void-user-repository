@@ -519,7 +519,7 @@ jobs:
             git add .gitattributes
 
             # Create README
-            cat > README.md << 'README_EOF'
+            cat > README.md << README_EOF
             # Void User Repository - ${ARCH}
 
             Binary package repository for Void Linux (${ARCH} architecture).
@@ -530,17 +530,17 @@ jobs:
 
             Add this repository to your system:
 
-            ```bash
+            \`\`\`bash
             sudo mkdir -p /etc/xbps.d
             echo "repository=https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
-            ```
+            \`\`\`
 
             Then update and install packages:
 
-            ```bash
+            \`\`\`bash
             sudo xbps-install -S
             sudo xbps-install <package-name>
-            ```
+            \`\`\`
 
             ## Note
 
