@@ -465,12 +465,15 @@ jobs:
           xbps-rindex -a *.xbps
 
           echo "==> Signing repository"
-          xbps-rindex --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          xbps-rindex -s --privkey private.pem --signedby "zenobit <zenobit@disroot.org>" "$PWD"
 
           echo "==> Signing individual packages"
-          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
+          xbps-rindex -S --privkey private.pem *.xbps
 
-          echo "==> Creating repository data"
+          echo "==> Re-index after signing"
+          xbps-rindex -a *.xbps
+
+          echo "==> Recreating repository data"
           xbps-rindex -c "$PWD"
 
           echo "==> Cleaning up private key"
