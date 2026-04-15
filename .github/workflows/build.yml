@@ -554,6 +554,11 @@ jobs:
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
 
+          # Store the absolute path to built packages before changing directory
+          BUILDDIR="$(pwd)/../../void-packages/hostdir/binpkgs"
+          ABS_BUILDDIR="$(cd "$BUILDDIR" && pwd)"
+          echo "==> Build directory: $ABS_BUILDDIR"
+
           # Create temp directory for repository operations
           WORK_DIR=$(mktemp -d)
           cd "$WORK_DIR"
@@ -605,8 +610,8 @@ jobs:
           fi
 
           # Copy built packages
-          cp ../../void-packages/hostdir/binpkgs/*.xbps ./
-          cp ../../void-packages/hostdir/binpkgs/*.xbps.sig2 ./
+          cp "$ABS_BUILDDIR"/*.xbps ./
+          cp "$ABS_BUILDDIR"/*.xbps.sig2 ./
 
           # Process built packages - handle new, updated, and re-signed
           echo "==> Processing packages"
