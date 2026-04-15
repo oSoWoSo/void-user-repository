@@ -464,6 +464,9 @@ jobs:
           echo "==> Indexing packages"
           xbps-rindex -a *.xbps
 
+          echo "==> Reindex"
+          xbps-rindex -r "$PWD"
+
           echo "==> Signing repository"
           xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
 
