@@ -558,8 +558,8 @@ jobs:
           WORK_DIR=$(mktemp -d)
           cd "$WORK_DIR"
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "oSoWoSo-bot"
+          git config --global user.email "osowoso@disroot.org"
 
           echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
           REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
@@ -580,38 +580,7 @@ jobs:
             git add .gitattributes
 
             # Create README
-            cat > README.md << 'README_EOF'
-            # Void User Repository - ${ARCH}
-
-            Binary package repository for Void Linux (${ARCH} architecture).
-
-            This is a rolling release repository - only the latest version of each package is kept.
-
-            ## Usage
-
-            Add this repository to your system:
-
-            ```bash
-            sudo mkdir -p /etc/xbps.d
-            echo "repository=https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}" | sudo tee /etc/xbps.d/00-${REPO_NAME}.conf
-            ```
-
-            Then update and install packages:
-
-            ```bash
-            sudo xbps-install -S
-            sudo xbps-install <package-name>
-            ```
-
-            ## Note
-
-            - This repository uses Git LFS for storing binary packages
-            - Old package versions are automatically replaced with newer ones
-            - This repository is automatically built and updated by GitHub Actions
-            - Templates are in https://github.com/oSoWoSo/void-user-repository
-
-            Last updated: $(date +'%Y-%m-%d %H:%M:%S UTC')
-            README_EOF
+            printf '# Void User Repository - %s\n\nBinary package repository for Void Linux (%s architecture).\n\nThis is a rolling release repository - only the latest version of each package is kept.\n\n## Usage\n\nAdd this repository to your system:\n\n```bash\nsudo mkdir -p /etc/xbps.d\necho "repository=https://raw.githubusercontent.com/%s/%s" | sudo tee /etc/xbps.d/00-%s.conf\n```\n\nThen update and install packages:\n\n```bash\nsudo xbps-install -S\nsudo xbps-install <package-name>\n```\n\n## Note\n\n- This repository uses Git LFS for storing binary packages\n- Old package versions are automatically replaced with newer ones\n- This repository is automatically built and updated by GitHub Actions\n- Templates are in https://github.com/oSoWoSo/void-user-repository\n\nLast updated: %s\n' "${ARCH}" "${ARCH}" "${REPO_OWNER}" "${REPO_NAME}" "${REPO_NAME}" "$(date +'%Y-%m-%d %H:%M:%S UTC')" > README.md
             git add README.md
             git commit -m "Initial commit"
             git push -u origin "$BRANCH"
