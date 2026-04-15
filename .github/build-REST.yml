@@ -481,6 +481,7 @@ jobs:
 
       - name: Push to repository
         if: success()
+        working-directory: void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}
           XBPS_ARCH: ${{ matrix.config.arch }}
@@ -493,8 +494,8 @@ jobs:
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
 
-          # Store the absolute path to built packages before changing directory
-          BUILDDIR="$(pwd)/../../void-packages/hostdir/binpkgs"
+          # Store the absolute path to built packages
+          BUILDDIR="$(pwd)"
           ABS_BUILDDIR="$(cd "$BUILDDIR" && pwd)"
           echo "==> Build directory: $ABS_BUILDDIR"
 
