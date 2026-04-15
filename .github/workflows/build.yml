@@ -523,7 +523,7 @@ jobs:
           xbps-rindex -a *.xbps
 
           echo "==> Signing repository"
-          xbps-rindex --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
 
           echo "==> Signing individual packages"
           xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
