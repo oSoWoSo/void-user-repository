@@ -45,12 +45,6 @@ If you dont wish to build the packages locally, this repository also provides pr
 | xdg-desktop-portal-hyprland | 1.3.11 | https://github.com/hyprwm/xdg-desktop-portal-hyprland | zenobit |  |
 | zen-browser | 1.17.4b | https://www.zen-browser.app/ | Encoded14 | x86_64 aarch64 |
 | zig | 0.14.1 | https://ziglang.org | Orphaned | x86_64* aarch64* |
-## The `vay` script
-
-`vay` works similarly to AUR helpers on Arch Linux.
-Automatically performs the actions needed to build the packages locally on your system.
-If you prefer to do this manually go to [Manually building](#manually-building).
-Note: this script not only works for the extra template files provided in this repository but also for packages not distrubted in the Voidlinux mirrors such as nonfree packages (discord, spotify, etc.)
 
 ## Installation
 
