@@ -24,6 +24,7 @@ linuxcommandlibrary
 ly
 nebula-gtk
 quickemu
+rgc
 sdbus-cpp
 shattered-pixel-dungeon
 tomlplusplus
