@@ -2,10 +2,15 @@ permissions:
   contents: write
   pull-requests: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Lint templates
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container:
       image: ghcr.io/void-linux/void-glibc-full:20250616R1
       options: --platform linux/amd64 --privileged
@@ -171,6 +176,7 @@ jobs:
   test-pr:
     name: Test PR changes
     needs: lint
+    timeout-minutes: 20
     if: github.event_name == 'pull_request' && needs.lint.outputs.packages != ''
     runs-on: ubuntu-latest
     container:
@@ -305,6 +311,7 @@ jobs:
   build:
     name: Build and publish packages
     needs: lint
+    timeout-minutes: 20
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.lint.outputs.packages != ''
     runs-on: ubuntu-latest
     container:
