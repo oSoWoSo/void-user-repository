@@ -1,7 +1,7 @@
 ## DISCLAIMER
 
-This project is **not affiliated with or endorsed by the Void Linux project** or its maintainers.
-It is an **unofficial community repository** designed to simplify managing and building user-contributed packages using the void-packages build system.
+This project is **not affiliated with or endorsed by the Void Linux project** or its maintainers.  
+It is an **unofficial community repository** designed to simplify managing and building user-contributed packages using the void-packages build system.  
 Use at your own discretion.
 
 ## Overview
