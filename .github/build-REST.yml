@@ -22,7 +22,7 @@ jobs:
         run: |
           mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
           sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git git-lfs
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
           useradd -G xbuilder -M builder
 
       - name: Checkout this repo
@@ -339,7 +339,7 @@ jobs:
           mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
           sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
           # install dependencies
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git git-lfs
+          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
           # create non-root user
           useradd -G xbuilder -M builder
 
@@ -453,164 +453,130 @@ jobs:
           export PATH="/opt/xbps/usr/bin/:$PATH"
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
 
-          # Check if there are packages to sign
           if ! ls *.xbps 1>/dev/null 2>&1; then
             echo "⚠️ No packages to sign"
             exit 0
           fi
-
-          echo "==> Writing private key"
-          printf "%s\n" "$PRIV_KEY" > private.pem
-          chmod 600 private.pem
 
           echo "==> Merging free + nonfree"
           if [ -d "nonfree" ]; then
             mv nonfree/*.xbps . 2>/dev/null || true
           fi
 
-          echo "==> Indexing packages"
-          xbps-rindex -a *.xbps
-
-          echo "==> Reindex"
-          xbps-rindex -r "$PWD"
-
-          echo "==> Signing repository"
-          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          echo "==> Writing private key"
+          printf "%s\n" "$PRIV_KEY" > private.pem
+          chmod 600 private.pem
 
           echo "==> Signing individual packages"
           xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
 
-          echo "==> Creating repository data"
-          xbps-rindex -c "$PWD"
-
           echo "==> Cleaning up private key"
           rm -f private.pem
 
-      - name: Push to repository
+      - name: Upload to Surfer
         if: success()
         working-directory: void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}
           XBPS_ARCH: ${{ matrix.config.arch }}
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
-          REPO_OWNER: ${{ github.repository_owner }}
-          REPO_NAME: VUR-${{ matrix.config.arch }}
-          BRANCH: bin
-          TOKEN: ${{ secrets.TOKEN }}
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
         run: |
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
 
-          # Store the absolute path to built packages
+          SURFER_URL="https://repo.osowoso.org"
+          WEBDAV="${SURFER_URL}/_webdav/${ARCH}"
           BUILDDIR="$(pwd)"
-          ABS_BUILDDIR="$(cd "$BUILDDIR" && pwd)"
-          echo "==> Build directory: $ABS_BUILDDIR"
 
-          # Create temp directory for repository operations
-          WORK_DIR=$(mktemp -d)
-          cd "$WORK_DIR"
-
-          git config --global user.name "oSoWoSo-bot"
-          git config --global user.email "osowoso@disroot.org"
-
-          echo "==> Target repository: ${REPO_OWNER}/${REPO_NAME}"
-          REMOTE="https://${REPO_OWNER}:${TOKEN}@github.com/${REPO_OWNER}/${REPO_NAME}.git"
-
-          # Clone or init repository
-          if git clone --depth 1 --branch "$BRANCH" "$REMOTE" repo 2>/dev/null; then
-            echo "==> Repository exists, cloning for update"
-            cd repo
-          else
-            echo "==> Initializing new repository"
-            git init repo
-            cd repo
-            git checkout -b "$BRANCH"
-
-            # Setup Git LFS
-            git lfs install
-            echo "*.xbps filter=lfs diff=lfs merge=lfs -text" > .gitattributes
-            git add .gitattributes
-
-            # Create README
-            printf '# Void User Repository - %s\n\nBinary package repository for Void Linux (%s architecture).\n\nThis is a rolling release repository - only the latest version of each package is kept.\n\n## Usage\n\nAdd this repository to your system:\n\n```bash\nsudo mkdir -p /etc/xbps.d\necho "repository=https://raw.githubusercontent.com/%s/%s" | sudo tee /etc/xbps.d/00-%s.conf\n```\n\nThen update and install packages:\n\n```bash\nsudo xbps-install -S\nsudo xbps-install <package-name>\n```\n\n## Note\n\n- This repository uses Git LFS for storing binary packages\n- Old package versions are automatically replaced with newer ones\n- This repository is automatically built and updated by GitHub Actions\n- Templates are in https://github.com/oSoWoSo/void-user-repository\n\nLast updated: %s\n' "${ARCH}" "${ARCH}" "${REPO_OWNER}" "${REPO_NAME}" "${REPO_NAME}" "$(date +'%Y-%m-%d %H:%M:%S UTC')" > README.md
-            git add README.md
-            git commit -m "Initial commit"
-            git push -u origin "$BRANCH"
+          if ! ls *.xbps 1>/dev/null 2>&1; then
+            echo "⚠️ No packages to upload"
+            exit 0
           fi
 
-          # Ensure LFS tracking
-          git lfs track "*.xbps"
+          WORK_DIR=$(mktemp -d)
+
+          # Ensure remote directory exists
+          curl -s -X MKCOL "${WEBDAV}/" -u ":${SURFER_TOKEN}" || true
+
+          # List existing .xbps files on Surfer via WebDAV
+          echo "==> Fetching existing file list"
+          EXISTING_PKGS=$(curl -s -X PROPFIND "${WEBDAV}/" \
+            -H "Depth: 1" \
+            -u ":${SURFER_TOKEN}" 2>/dev/null \
+            | grep -o '<D:href>[^<]*\.xbps</D:href>' \
+            | sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true)
+
+          # Download existing packages to rebuild complete index
+          cd "$WORK_DIR"
+          if [ -n "$EXISTING_PKGS" ]; then
+            echo "==> Downloading existing packages"
+            for pkg in $EXISTING_PKGS; do
+              curl -sf -o "$pkg" "${SURFER_URL}/${ARCH}/${pkg}" \
+                -u ":${SURFER_TOKEN}" && echo "  Downloaded: $pkg" || true
+              curl -sf -o "${pkg}.sig2" "${SURFER_URL}/${ARCH}/${pkg}.sig2" \
+                -u ":${SURFER_TOKEN}" 2>/dev/null || true
+            done
+          fi
 
           # Remove packages for deleted templates
           removed="${{ needs.lint.outputs.removed }}"
           if [ -n "$removed" ]; then
             echo "==> Removing packages for deleted templates: $removed"
             for pkg in $removed; do
-              if ls "${pkg}"-*.xbps 2>/dev/null; then
-                git rm "${pkg}"-*.xbps "${pkg}"-*.xbps.sig2 2>/dev/null || true
-                echo "  Removed: $pkg"
-              fi
+              for old_pkg in "${pkg}"-*.xbps; do
+                [ -f "$old_pkg" ] || continue
+                echo "  Removing: $old_pkg"
+                curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
+                curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
+                rm -f "$old_pkg" "${old_pkg}.sig2"
+              done
             done
-            if ! git commit -m "Remove packages for deleted templates"; then
-              echo "  No removal needed"
-            fi
           fi
 
-          # Copy built packages
-          cp "$ABS_BUILDDIR"/*.xbps ./
-          cp "$ABS_BUILDDIR"/*.xbps.sig2 ./
-
-          # Process built packages - handle new, updated, and re-signed
-          echo "==> Processing packages"
-          for new_pkg in *.xbps; do
+          # Replace old versions with newly built packages
+          echo "==> Processing new packages"
+          for new_pkg in "$BUILDDIR"/*.xbps; do
             [ -f "$new_pkg" ] || continue
-
             new_basename=$(basename "$new_pkg")
-            new_sig="${new_pkg}.sig2"
-
-            # Extract package name and version
             new_basename_no_ext="${new_basename%.xbps}"
             pkg_name="${new_basename_no_ext%-*}"
-            pkg_ver_rev="${new_basename_no_ext#*-}"
-            
-            echo "Processing: $pkg_name"
 
-            # Remove old versions of the same package (different version/revision)
             for old_pkg in "${pkg_name}"-*.xbps; do
               [ -f "$old_pkg" ] || continue
               [ "$old_pkg" = "$new_basename" ] && continue
               echo "  Removing old: $old_pkg"
+              curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
+              curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
               rm -f "$old_pkg" "${old_pkg}.sig2"
-              git rm -f "$old_pkg" "${old_pkg}.sig2" 2>/dev/null || true
             done
 
-            # Stage new package and signature
-            git add "${new_basename}" 2>/dev/null || true
-            [ -f "$new_sig" ] && git add "$new_sig" 2>/dev/null || true
+            cp "$new_pkg" ./
+            [ -f "${new_pkg}.sig2" ] && cp "${new_pkg}.sig2" ./ || true
           done
 
-          # Update repository index
-          echo "==> Updating repository index"
+          # Build complete repository index and sign it
+          echo "==> Building repository index"
           xbps-rindex -a *.xbps 2>/dev/null || true
 
-          # Add repodata
-          ls *-repodata 2>/dev/null && git add *-repodata 2>/dev/null || true
+          printf "%s\n" "$PRIV_KEY" > private.pem
+          chmod 600 private.pem
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
+          xbps-rindex -c "$PWD"
+          rm -f private.pem
 
-          # Commit changes
-          if ! git diff --staged --quiet; then
-            git commit -m "Update packages for ${ARCH} - $(date +'%Y-%m-%d %H:%M:%S')" || true
-          else
-            echo "  No changes to commit"
-          fi
+          # Upload everything to Surfer
+          echo "==> Uploading to Surfer"
+          for file in *.xbps *.xbps.sig2 *-repodata; do
+            [ -f "$file" ] || continue
+            echo "  Uploading: $file"
+            curl -s -T "$file" "${WEBDAV}/${file}" \
+              -u ":${SURFER_TOKEN}" || echo "  ⚠️ Failed: $file"
+          done
 
-          # Push all commits
-          if ! git push origin "$BRANCH"; then
-            echo "❌ Push failed!" >> $GITHUB_STEP_SUMMARY
-            exit 1
-          fi
+          echo "==> Done: ${SURFER_URL}/${ARCH}/"
+          echo "## ✅ Uploaded to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
 
-          echo "==> Successfully pushed to https://${REPO_OWNER}/${REPO_NAME}"
-
-          # Cleanup
           cd /
           rm -rf "$WORK_DIR"
