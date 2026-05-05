@@ -1,0 +1,15 @@
+# Template file for 'Vish'
+pkgname=Vish
+version=1.1.2
+revision=1
+build_style=meson
+short_desc="Visual Scripting for Bash"
+maintainer="zenobit <zenobit@disroot.org>"
+license="MIT"
+homepage="https://github.com/Lluciocc/Vish"
+distfiles="https://github.com/Lluciocc/Vish/archive/refs/tags/v${version}.tar.gz"
+checksum=364f1c35c333d9abe57f8a09fe23790be25a138db7e630d649527cbfcf7dc9bf
+
+post_install() {
+	vlicense LICENSE
+}
