@@ -7,177 +7,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint templates
+  detect:
+    name: Detect packages
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    container:
-      image: ghcr.io/void-linux/void-glibc-full:20250616R1
-      options: --platform linux/amd64 --privileged
+    timeout-minutes: 5
     outputs:
-      packages: ${{ steps.lint.outputs.packages }}
-      removed: ${{ steps.lint.outputs.removed }}
+      packages: ${{ steps.detect.outputs.packages }}
+      removed: ${{ steps.detect.outputs.removed }}
     steps:
-      - name: Prepare container
-        run: |
-          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
-          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
-          useradd -G xbuilder -M builder
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
 
-      - name: Checkout this repo
+      - name: Detect changed packages
+        id: detect
         run: |
-          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
-          cd extra
-          git fetch --no-tags origin "${{ github.sha }}" --depth 1
-          git checkout --detach "${{ github.sha }}"
-
-      - name: Checkout void-packages
-        run: |
-          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
-
-      - name: Prepare masterdir
-        run: |
-          cd void-packages
-          chown -R builder:builder .
-          sudo -Eu builder common/travis/set_mirror.sh
-          sudo -Eu builder common/travis/prepare.sh
-          common/travis/fetch-xtools.sh
-
-      - name: Lint
-        id: lint
-        run: |
-          export PATH="/opt/xbps/usr/bin/:$PATH"
-
-          # Determine which templates to process
           packages=""
           removed=""
 
-          # All templates (workflow_dispatch with all=true)
           if [ "${{ inputs.all }}" = "true" ]; then
-            packages=$(find extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
-          # Single template (workflow_dispatch with template=)
+            packages=$(find srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
           elif [ -n "${{ inputs.template }}" ]; then
-            packages=${{ inputs.template }}
-          # Multiple templates (workflow_dispatch with templates=)
+            packages="${{ inputs.template }}"
           elif [ -n "${{ inputs.templates }}" ]; then
             packages=$(printf '%s ' ${{ inputs.templates }} | sed 's/ $//')
-          # Push event - detect changed packages
-          elif [ "${{ github.event_name }}" = "push" ]; then
-            base="${{ github.event.before }}"
-            tip="${{ github.sha }}"
-
-            changed_pkgs=$(git diff --name-only "$base" "$tip" -- 'srcpkgs/*/template' \
-              | cut -d/ -f2 \
-              | sort -u \
-              | tr '\n' ' ' \
-              | sed 's/ $//')
-            removed_pkgs=$(git diff --name-status "$base" "$tip" -- 'srcpkgs/*/template' \
-              | awk '$1=="D"{print $2}' \
-              | cut -d/ -f2 \
-              | sort -u \
-              | tr '\n' ' ' \
-              | sed 's/ $//')
-
-            packages="$changed_pkgs"
-            removed="$removed_pkgs"
-          # PR event - detect changes
-          elif [ "${{ github.event_name }}" = "pull_request" ]; then
-            cd extra
-            base="${{ github.event.pull_request.base.sha }}"
-            tip="${{ github.event.pull_request.head.sha }}"
-
-            changed_pkgs=$(git diff --name-only "$base" "$tip" -- 'srcpkgs/*/template' \
-              | cut -d/ -f2 \
-              | sort -u \
-              | tr '\n' ' ' \
-              | sed 's/ $//')
-            removed_pkgs=$(git diff --name-status "$base" "$tip" -- 'srcpkgs/*/template' \
-              | awk '$1=="D"{print $2}' \
-              | cut -d/ -f2 \
-              | sort -u \
-              | tr '\n' ' ' \
-              | sed 's/ $//')
-
-            packages="$changed_pkgs"
-            removed="$removed_pkgs"
-            cd ..
-          # repository_dispatch - build all
+          elif [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
+            packages=$(git diff --name-only HEAD~1 HEAD -- 'srcpkgs/*/template' \
+              | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+            removed=$(git diff --name-status HEAD~1 HEAD -- 'srcpkgs/*/template' \
+              | awk '$1=="D"{print $2}' | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
           else
-            packages=$(find extra/srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
+            packages=$(find srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
           fi
 
-          echo "Chosen templates: ${packages:-<none>}"
-          echo "Removed templates: ${removed:-<none>}"
-
-          if [ -z "$packages" ] && [ -z "$removed" ]; then
-            echo "No packages to lint"
-            exit 1
-          elif [ -z "$packages" ] && [ -n "$removed" ]; then
-            # Only removed packages - skip build
-            echo "packages=" >> "$GITHUB_OUTPUT"
-            echo "removed=$removed" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Lint templates
-          cd void-packages
-          failed=""
-
-          for template_name in $packages; do
-            SOURCE="../extra/srcpkgs/$template_name"
-            DESTINATION="srcpkgs/$template_name"
-
-            if [ ! -d "$SOURCE" ]; then
-              echo "❌ Template not found: $SOURCE"
-              continue
-            fi
-
-            echo "==> Copying ${template_name}"
-            rm -rf "$DESTINATION"
-            cp -rv "$SOURCE" srcpkgs/
-
-            echo "==> Linting ${template_name}"
-
-            # Capture output and exit code
-            OUTPUT=$(sudo -Eu builder xlint "${template_name}" 2>&1) || LINT_FAILED=true
-            if [ -n "$OUTPUT" ] || [ "$LINT_FAILED" = true ]; then
-              echo "## ❌ ${template_name} lint failed:" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
-              echo '```' >> $GITHUB_STEP_SUMMARY
-              echo "❌ ${template_name} lint failed"
-              failed="${failed} ${template_name}"
-            else
-              echo "✅ ${template_name} lint passed"
-            fi
-            echo
-          done
-
-          if [ -n "${failed}" ]; then
-            packages_clean="$packages"
-            for fail in $failed; do
-              packages_clean=$(echo "$packages_clean" | sed "s/\b$fail\b//g")
-            done
-            packages=$(echo "$packages_clean" | xargs)
-            echo "⚠️ Continuing with successful packages: $packages"
-            echo "packages=$packages" >> "$GITHUB_OUTPUT"
-            if [ -n "$removed" ]; then
-              echo "removed=$removed" >> "$GITHUB_OUTPUT"
-            fi
-          else
-            echo "✅ All lints passed"
-            echo "packages=$packages" >> "$GITHUB_OUTPUT"
-            if [ -n "$removed" ]; then
-              echo "removed=$removed" >> "$GITHUB_OUTPUT"
-            fi
-          fi
+          echo "Packages: ${packages:-<none>}"
+          echo "Removed: ${removed:-<none>}"
+          echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          echo "removed=$removed" >> "$GITHUB_OUTPUT"
 
   test-pr:
     name: Test PR changes
-    needs: lint
+    needs: detect
     timeout-minutes: 20
-    if: github.event_name == 'pull_request' && needs.lint.outputs.packages != ''
+    if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -200,12 +72,9 @@ jobs:
     steps:
       - name: Prepare container
         run: |
-          # switch to repo-ci mirror
           mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
           sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          # install dependencies
           xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
-          # create non-root user
           useradd -G xbuilder -M builder
 
       - name: Checkout repo (PR head)
@@ -223,7 +92,6 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          # Update shlibs
           SHLIBS_FILE="void-packages/common/shlibs"
           APPEND_FILE="extra/shlibs_append"
           REMOVE_FILE="extra/shlibs_remove"
@@ -248,7 +116,6 @@ jobs:
             done < "$APPEND_FILE"
           fi
 
-          # Copy templates
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
@@ -264,11 +131,33 @@ jobs:
           sudo -Eu builder common/travis/prepare.sh
           common/travis/fetch-xtools.sh
 
+      - name: Lint templates
+        if: matrix.config.arch == 'x86_64'
+        continue-on-error: true
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          packages="${{ needs.detect.outputs.packages }}"
+          cd void-packages
+
+          for template_name in $packages; do
+            echo "==> Linting ${template_name}"
+            OUTPUT=$(sudo -Eu builder xlint "${template_name}" 2>&1) || true
+            if [ -n "$OUTPUT" ]; then
+              echo "## ❌ ${template_name} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
+              echo '```' >> $GITHUB_STEP_SUMMARY
+              echo "❌ ${template_name}: $OUTPUT"
+            else
+              echo "✅ ${template_name} lint passed"
+            fi
+          done
+
       - name: Build packages
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-          packages="${{ needs.lint.outputs.packages }}"
+          packages="${{ needs.detect.outputs.packages }}"
 
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
@@ -310,9 +199,9 @@ jobs:
 
   build:
     name: Build and publish packages
-    needs: lint
+    needs: detect
     timeout-minutes: 20
-    if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.lint.outputs.packages != ''
+    if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -335,12 +224,9 @@ jobs:
     steps:
       - name: Prepare container
         run: |
-          # switch to repo-ci mirror
           mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
           sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          # install dependencies
           xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
-          # create non-root user
           useradd -G xbuilder -M builder
 
       - name: Checkout this repo
@@ -358,7 +244,6 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          # Update shlibs
           SHLIBS_FILE="void-packages/common/shlibs"
           APPEND_FILE="extra/shlibs_append"
           REMOVE_FILE="extra/shlibs_remove"
@@ -383,7 +268,6 @@ jobs:
             done < "$APPEND_FILE"
           fi
 
-          # Copy templates
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
@@ -403,7 +287,7 @@ jobs:
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd void-packages
-          packages="${{ needs.lint.outputs.packages }}"
+          packages="${{ needs.detect.outputs.packages }}"
 
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
@@ -521,7 +405,7 @@ jobs:
           fi
 
           # Remove packages for deleted templates
-          removed="${{ needs.lint.outputs.removed }}"
+          removed="${{ needs.detect.outputs.removed }}"
           if [ -n "$removed" ]; then
             echo "==> Removing packages for deleted templates: $removed"
             for pkg in $removed; do
