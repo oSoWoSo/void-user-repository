@@ -23,6 +23,7 @@ on:
         type: choice
         options:
         -
+        - Vish
         - aquamarine
         - brow6el
         - btrfs-progs
