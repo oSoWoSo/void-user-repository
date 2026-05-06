@@ -43,7 +43,9 @@ jobs:
           echo "Packages: ${packages:-<none>}"
           echo "Removed: ${removed:-<none>}"
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
+          echo "Build: ${packages}" >> $GITHUB_STEP_SUMMARY
           echo "removed=$removed" >> "$GITHUB_OUTPUT"
+          echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
 
   test-pr:
     name: Test PR changes
@@ -142,7 +144,7 @@ jobs:
             echo "==> Linting ${template_name}"
             OUTPUT=$(sudo -Eu builder xlint "${template_name}" 2>&1) || true
             if [ -n "$OUTPUT" ]; then
-              echo "## ❌ ${template_name} lint failed:" >> $GITHUB_STEP_SUMMARY
+              echo "❌ ${template_name} lint failed:" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
               echo "$OUTPUT" >> $GITHUB_STEP_SUMMARY
               echo '```' >> $GITHUB_STEP_SUMMARY
@@ -188,7 +190,7 @@ jobs:
           done
 
           if [ -n "${failed}" ]; then
-            echo "## ❌ Failed builds" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Failed builds" >> $GITHUB_STEP_SUMMARY
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
@@ -503,7 +505,7 @@ jobs:
           done
 
           echo "==> Done: ${SURFER_URL}/${ARCH}/"
-          echo "## ✅ Uploaded to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Uploaded to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
 
           cd /
           rm -rf "$WORK_DIR"
