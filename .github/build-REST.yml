@@ -317,7 +317,7 @@ jobs:
           done
 
           if [ -n "${failed}" ]; then
-            echo "## ❌ Failed builds" >> $GITHUB_STEP_SUMMARY
+            echo "❌ Failed builds" >> $GITHUB_STEP_SUMMARY
             for f in ${failed}; do
               echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
             done
@@ -326,7 +326,6 @@ jobs:
           fi
 
       - name: Sign packages
-        if: success()
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.config.arch }}
@@ -357,7 +356,6 @@ jobs:
           rm -f private.pem
 
       - name: Upload to Surfer
-        if: success()
         working-directory: void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}
