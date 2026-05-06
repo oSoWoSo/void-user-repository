@@ -1,6 +1,6 @@
 # Template file for 'cosmic-theme-editor'
 pkgname=cosmic-theme-editor
-version=1
+version=0.0.0
 revision=1
 archs="x86_64* i686"
 build_style="meson"
@@ -11,10 +11,6 @@ short_desc="Write a GTK + Rust application"
 maintainer="Bella Wagner <belladev109@proton.me>"
 license="GPL-3.0-only"
 homepage="https://github.com/pop-os/cosmic-theme-editor"
-
-do_fetch() {
-	if [ -d $wrksrc ]; then
-		rm -rf $wrksrc
-	fi
-	git clone https://github.com/pop-os/cosmic-theme-editor.git $wrksrc
-}
+distfiles="https://github.com/pop-os/cosmic-theme-editor/archive/refs/heads/master.tar.gz"
+# Deprecated? Repo archived
+checksum=b321178ab715c800c532a1fc8a228ee303edc0a58442439d94a381ce7a8dc3d9

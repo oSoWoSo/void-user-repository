@@ -1,6 +1,6 @@
 # Template file for 'cosmic-greeter'
 pkgname=cosmic-greeter
-version=1.0.11
+version=1.0.12
 revision=1
 archs="x86_64* i686"
 build_style=cargo
@@ -12,8 +12,11 @@ short_desc="COSMIC Display Manager"
 maintainer="Bella Wagner <belladev109@proton.me>"
 license="GPL-3.0-only"
 homepage="https://github.com/pop-os/cosmic-greeter"
+distfiles="https://github.com/pop-os/cosmic-greeter/archive/refs/tags/epoch-${version}.tar.gz"
+checksum=8a801c89bf97cbe50953aec43fcdf27e3f80558b34730fd75227854898758295
 build_options="sccache"
-skip_extraction=yes
+#skip_extraction=yes
+
 system_accounts="_cosmicgreeter"
 _cosmicgreeter_homedir="/var/lib/cosmic-greeter"
 _cosmicgreeter_descr="Cosmic Greeter Account"
@@ -21,17 +24,6 @@ _cosmicgreeter_groups="video"
 
 export VERGEN_GIT_COMMIT_DATE="${version}_${revision}"
 export VERGEN_GIT_SHA="${version}_${revision}"
-
-do_fetch() {
-	if [ -d $wrksrc ]; then
-		rm -rf $wrksrc
-	fi
-	git clone $homepage $wrksrc
-	cd $wrksrc
-	git checkout 4d74121ac1fa48126f080d170be20abf551cdbaa
-	git lfs install --local
-	git lfs pull
-}
 
 pre_build() {
 	$(vopt_if sccache "export RUSTC_WRAPPER=/usr/bin/sccache")

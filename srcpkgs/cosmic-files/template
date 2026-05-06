@@ -1,6 +1,6 @@
 # Template file for 'cosmic-files'
 pkgname=cosmic-files
-version=1.0.11
+version=1.0.12
 revision=1
 archs="x86_64*"
 build_style=cargo
