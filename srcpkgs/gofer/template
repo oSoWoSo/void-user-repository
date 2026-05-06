@@ -1,0 +1,16 @@
+# Template file for 'gofer'
+pkgname=gofer
+version=0.2.0
+revision=1
+build_style=go
+go_import_path="gofer"
+short_desc="Fast, minimal application launcher written in pure Go. Supports both Way"
+maintainer="zenobit <zenobit@disroot.org>"
+license="GPL-3.0-only"
+homepage="https://codeberg.org/JakeAtLinux/Gofer"
+distfiles="https://codeberg.org/JakeAtLinux/Gofer/archive/v${version}.tar.gz"
+checksum=a607541203847a1289a85c65d5a7a54f6929b44ce64589912cd818b1cfc7e3b6
+
+do_install() {
+    vbin gofer
+}
