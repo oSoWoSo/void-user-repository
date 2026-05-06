@@ -1,14 +1,15 @@
+Vish
 aquamarine
 brow6el
 btrfs-progs
 gh-lazy
 glaze
-graphite-gtk-theme
 hyprcursor
 hyprdynamicmonitors
 hyprgraphics
 hypridle
 hyprland
+hyprland-devel
 hyprland-guiutils
 hyprland-protocols
 hyprland-qt-support
@@ -26,11 +27,11 @@ libspng
 linuxcommandlibrary
 ly
 nebula-gtk
+python3-PyGithub
 python3-anysqlite
 python3-hishel
 python3-inline-snapshot
 python3-linkify-it-py
-python3-PyGithub
 python3-textual
 python3-uc-micro-py
 quickemu
@@ -40,7 +41,6 @@ shattered-pixel-dungeon
 tdf
 tomlplusplus
 vbm
-Vish
 xdg-desktop-portal-hyprland
 zen-browser
 zig

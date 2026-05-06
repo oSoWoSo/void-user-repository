@@ -34,6 +34,7 @@ on:
         - hyprgraphics
         - hypridle
         - hyprland
+        - hyprland-devel
         - hyprland-guiutils
         - hyprland-protocols
         - hyprland-qt-support
@@ -62,6 +63,7 @@ on:
         - rgc
         - sdbus-cpp
         - shattered-pixel-dungeon
+        - tdf
         - tomlplusplus
         - vbm
         - xdg-desktop-portal-hyprland
