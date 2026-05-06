@@ -45,7 +45,9 @@ jobs:
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
           echo "Build: ${packages}" >> $GITHUB_STEP_SUMMARY
           echo "removed=$removed" >> "$GITHUB_OUTPUT"
-          echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$removed" ]; then
+            echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
+          fi
 
   test-pr:
     name: Test PR changes
@@ -178,25 +180,9 @@ jobs:
 
           for pkg in ${PKGS}; do
             echo "==> Building ${pkg}"
-            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "⚠️ build failed: ${pkg}"
-              failed="${failed} ${pkg}"
-            else
-              echo
-              echo "✅ ${pkg} built successfully"
-            fi
-            echo
+            sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
             echo
           done
-
-          if [ -n "${failed}" ]; then
-            echo "❌ Failed builds" >> $GITHUB_STEP_SUMMARY
-            for f in ${failed}; do
-              echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
-            done
-          else
-            echo "✅ All builds succeeded"
-          fi
 
   build:
     name: Build and publish packages
@@ -307,25 +293,9 @@ jobs:
 
           for pkg in ${PKGS}; do
             echo "==> Building ${pkg}"
-            if ! sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"; then
-              echo "⚠️ build failed: ${pkg}"
-              failed="${failed} ${pkg}"
-            else
-              echo
-              echo "✅ ${pkg} built successfully"
-            fi
-            echo
+            sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
             echo
           done
-
-          if [ -n "${failed}" ]; then
-            echo "❌ Failed builds" >> $GITHUB_STEP_SUMMARY
-            for f in ${failed}; do
-              echo "  - ${f}" >> $GITHUB_STEP_SUMMARY
-            done
-          else
-            echo "✅ All builds succeeded"
-          fi
 
       - name: Sign packages
         env:
@@ -505,7 +475,7 @@ jobs:
           done
 
           echo "==> Done: ${SURFER_URL}/${ARCH}/"
-          echo "✅ Uploaded to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+          echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
 
           cd /
           rm -rf "$WORK_DIR"
