@@ -87,6 +87,12 @@ jobs:
           done < ../templatesList >> build.yml
           cat ../build-REST.yml >> build.yml
 
+      - name: Install pandoc
+        run: sudo apt-get install -y pandoc
+
+      - name: Regenerate website
+        run: ./create-web build "Void Community Repository"
+
       - name: Push results
         env:
           TOKEN: ${{ secrets.WORKFLOWS }}
@@ -99,6 +105,21 @@ jobs:
           git commit -m "CI: update" || echo "Nothing to commit"
           git push || echo "Nothing to push"
           git status
+
+      - name: Deploy website to page branch
+        env:
+          TOKEN: ${{ secrets.WORKFLOWS }}
+        run: |
+          cd docs
+          git init
+          git config user.name "oSoWoso-bot"
+          git config user.email "osowoso@disroot.org"
+          git checkout -b page
+          git add .
+          git commit -m "Deploy: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push --force \
+            "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" \
+            page
 
       - name: Trigger build workflow
         if: steps.detect.outputs.new_count > 0

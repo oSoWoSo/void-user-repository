@@ -449,9 +449,55 @@ jobs:
           xbps-rindex -c "$PWD"
           rm -f private.pem
 
+          # Generate index.html using shared template
+          echo "==> Generating index.html"
+          TEMPLATE="${GITHUB_WORKSPACE}/extra/.github/arch-index-template.html"
+
+          NAV_TMP=$(mktemp)
+          PKG_TMP=$(mktemp)
+          for a in x86_64 x86_64-musl aarch64 aarch64-musl; do
+            if [ "$a" = "${ARCH}" ]; then
+              printf '  <li><a href="." class="active">%s</a></li>\n' "$a" >> "$NAV_TMP"
+            else
+              printf '  <li><a href="../%s/">%s</a></li>\n' "$a" "$a" >> "$NAV_TMP"
+            fi
+          done
+
+          {
+            printf '<table>\n<thead><tr><th>package</th><th>version</th><th>download</th></tr></thead>\n<tbody>\n'
+            for xbps_file in $(ls *.xbps 2>/dev/null | sort); do
+              base="${xbps_file%.xbps}"
+              without_arch="${base%.*}"
+              pkg_ver=$(printf '%s' "$without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
+              pkg_name="${without_arch%-${pkg_ver}}"
+              printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="https://repo.osowoso.org/%s/%s">&#x2b07; %s</a></td></tr>\n' \
+                "$pkg_name" "$pkg_ver" "${ARCH}" "$xbps_file" "$xbps_file"
+            done
+            printf '</tbody>\n</table>\n'
+          } > "$PKG_TMP"
+
+          sed \
+            -e "s|__ARCH__|${ARCH}|g" \
+            -e "s|__CSS_URL__|https://repos.osowoso.org/style.css|g" \
+            -e "s|__HOME_URL__|https://repos.osowoso.org|g" \
+            -e "s|__REPO_URL__|https://repo.osowoso.org/${ARCH}|g" \
+            -e "s|__FAVICON__||g" \
+            -e "s|__SVGCOLOR__||g" \
+            "$TEMPLATE" \
+          | awk \
+            -v nav="$NAV_TMP" \
+            -v tbl="$PKG_TMP" \
+            '/__NAV_ARCH_LINKS__/ { while ((getline ln < nav) > 0) print ln; close(nav); next }
+             /__PACKAGE_TABLE__/  { while ((getline ln < tbl) > 0) print ln; close(tbl); next }
+             { print }' \
+          > index.html
+
+          rm -f "$NAV_TMP" "$PKG_TMP"
+          echo "  Generated index.html ($(ls *.xbps 2>/dev/null | wc -l) packages)"
+
           # Upload everything to Surfer
           echo "==> Uploading to Surfer"
-          for file in *.xbps *.xbps.sig2 *-repodata; do
+          for file in *.xbps *.xbps.sig2 *-repodata index.html; do
             [ -f "$file" ] || continue
             echo "  Uploading: $file"
             curl -s -T "$file" "${WEBDAV}/${file}" \

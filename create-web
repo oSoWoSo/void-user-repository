@@ -317,7 +317,7 @@ target_build() { ## Builds the website, optional: title argument
 	fi
 	rm -rf docs && mkdir -p docs
 	cp -r src/* docs/
-	rm -f docs/toggle.html docs/toc.html docs/svg-color.html
+	rm -f docs/toggle.html docs/toc.html docs/svg-color.html docs/footer.html
 
 	if [ "$count" = 1 ]; then
 		for file in *.md; do
@@ -333,6 +333,7 @@ target_build() { ## Builds the website, optional: title argument
 				--include-before-body=src/toggle.html \
 				--include-before-body=src/toc.html \
 				--include-before-body="$nav_file" \
+				--include-after-body=src/footer.html \
 				--include-after-body=src/svg-color.html \
 				--metadata title="$title" \
 				-o docs/index.html
@@ -365,6 +366,7 @@ target_build() { ## Builds the website, optional: title argument
 				--include-before-body=src/toggle.html \
 				--include-before-body=src/toc.html \
 				--include-before-body="$nav_file" \
+				--include-after-body=src/footer.html \
 				--include-after-body=src/svg-color.html \
 				--metadata title="$meta_title" \
 				-o "$output"
@@ -373,7 +375,112 @@ target_build() { ## Builds the website, optional: title argument
 	else
 		_re "ERROR: No .md files found!"
 	fi
+
+	_g "Generating architecture pages..."
+	target_arch_pages
 	_g "Finished"
+}
+
+# Check if a package's archs field supports a given XBPS_TARGET_MACHINE value.
+# Uses shell glob matching, same logic as xbps-src.
+_pkg_matches_arch() {
+	local archs_str="${1//\"/}"
+	local target="$2"
+	[ -z "$archs_str" ] && return 0
+	local has_pos=0 matched=0
+	for pat in $archs_str; do
+		if [[ "$pat" == ~* ]]; then
+			[[ "$target" == ${pat#~} ]] && return 1
+		else
+			has_pos=1
+			[[ "$target" == $pat ]] && matched=1
+		fi
+	done
+	[ "$has_pos" -eq 1 ] && { [ "$matched" -eq 1 ] && return 0 || return 1; }
+	return 0
+}
+
+# Target: arch_pages
+target_arch_pages() { ## Generate per-architecture index.html pages in docs/
+	[ ! -d docs ] && _re "docs/ not found — run 'build' first"
+	[ ! -d srcpkgs ] && _re "srcpkgs/ not found"
+	[ ! -f .github/arch-index-template.html ] && _re ".github/arch-index-template.html not found"
+
+	local -a arch_names=("x86_64-glibc" "x86_64-musl" "aarch64-glibc" "aarch64-musl")
+	local -a arch_targets=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
+	local -a arch_repo_targets=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
+
+	for i in "${!arch_names[@]}"; do
+		local arch="${arch_names[$i]}"
+		local target="${arch_targets[$i]}"
+		local repo_url="https://repo.osowoso.org/${arch_repo_targets[$i]}"
+
+		mkdir -p "docs/$arch"
+		local out="docs/$arch/index.html"
+
+		# Build nav arch links (written to temp file for awk multiline injection)
+		local nav_tmp pkg_tmp svg_tmp
+		nav_tmp=$(mktemp)
+		pkg_tmp=$(mktemp)
+		svg_tmp=$(mktemp)
+
+		for j in "${!arch_names[@]}"; do
+			if [ "$j" -eq "$i" ]; then
+				printf '  <li><a href="." class="active">%s</a></li>\n' "${arch_names[$j]}" >> "$nav_tmp"
+			else
+				printf '  <li><a href="../%s/">%s</a></li>\n' "${arch_names[$j]}" "${arch_names[$j]}" >> "$nav_tmp"
+			fi
+		done
+
+		# Build package table (written to temp file)
+		{
+			printf '<table>\n<thead><tr>\n'
+			printf '  <th>package</th><th>version</th><th>homepage</th><th>maintainer</th><th>description</th>\n'
+			printf '</tr></thead>\n<tbody>\n'
+			local pkg_count=0
+			for tpl in srcpkgs/*/template; do
+				[ -f "$tpl" ] || continue
+				local dir_name pkg_name pkg_archs pkg_ver pkg_home pkg_maint pkg_desc
+				dir_name=$(basename "$(dirname "$tpl")")
+				pkg_name=$(grep "^pkgname=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+				[ "$pkg_name" != "$dir_name" ] && continue
+				pkg_archs=$(grep "^archs=" "$tpl" | head -1 | cut -d= -f2-)
+				_pkg_matches_arch "$pkg_archs" "$target" || continue
+				pkg_ver=$(grep "^version=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+				pkg_home=$(grep "^homepage=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+				pkg_maint=$(grep "^maintainer=" "$tpl" | head -1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
+				pkg_desc=$(grep "^short_desc=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+				printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td></tr>\n' \
+					"$pkg_name" "$pkg_ver" "$pkg_home" "$pkg_home" "$pkg_maint" "$pkg_desc"
+				((pkg_count++))
+			done
+			printf '</tbody>\n</table>\n'
+		} > "$pkg_tmp"
+
+		# SVG color script
+		< src/svg-color.html > "$svg_tmp"
+
+		# Process template: simple substitutions via sed, multiline via awk
+		sed \
+			-e "s|__ARCH__|${arch}|g" \
+			-e "s|__CSS_URL__|../style.css|g" \
+			-e "s|__HOME_URL__|../index.html|g" \
+			-e "s|__REPO_URL__|${repo_url}|g" \
+			-e 's|__FAVICON__|<link rel="icon" href="../favicon.ico" />|g' \
+			.github/arch-index-template.html \
+		| awk \
+			-v nav="$nav_tmp" \
+			-v tbl="$pkg_tmp" \
+			-v svg="$svg_tmp" \
+			'/__NAV_ARCH_LINKS__/ { while ((getline ln < nav) > 0) print ln; close(nav); next }
+			 /__PACKAGE_TABLE__/  { while ((getline ln < tbl) > 0) print ln; close(tbl); next }
+			 /__SVGCOLOR__/       { while ((getline ln < svg) > 0) print ln; close(svg); next }
+			 { print }' \
+		> "$out"
+
+		rm -f "$nav_tmp" "$pkg_tmp" "$svg_tmp"
+		_g "Generated ($pkg_count packages): $out"
+	done
 }
 
 # Target: help

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Void Community Repository — __ARCH__</title>
+  <link rel="stylesheet" href="__CSS_URL__" />
+  __FAVICON__
+</head>
+<body>
+<button class="theme-toggle" onclick="toggleTheme()">🌓</button>
+<script>
+  function toggleTheme(){
+    const html=document.documentElement;
+    const current=html.getAttribute("data-theme")||"dark";
+    const next=current==="dark"?"light":"dark";
+    html.setAttribute("data-theme",next);
+    localStorage.setItem("theme",next)
+  }
+  (function(){
+    const saved=localStorage.getItem("theme")||"dark";
+    document.documentElement.setAttribute("data-theme",saved)
+  })();
+</script>
+<nav><ul>
+  <li><a href="https://osowoso.org">oSoWoSo</a></li>
+  <li><a href="__HOME_URL__">Home</a></li>
+__NAV_ARCH_LINKS__
+  <li><a href="https://github.com/oSoWoSo/Void_Community_Repository">&#x2934; source</a></li>
+</ul></nav>
+<header id="title-block-header">
+<h1 class="title">Void Community Repository</h1>
+</header>
+<h2>__ARCH__ packages</h2>
+<h3 id="add-repo">Add this repository to XBPS</h3>
+<ol>
+<li>Create the config entry:
+<pre><code>echo repository=__REPO_URL__ | sudo tee /etc/xbps.d/00-VUR.conf</code></pre>
+</li>
+<li>Sync and accept fingerprint:
+<pre><code>sudo xbps-install -S</code></pre>
+</li>
+<li>Install packages:
+<pre><code>sudo xbps-install -S &lt;package&gt;</code></pre>
+</li>
+</ol>
+<h3 id="packages">Available packages</h3>
+__PACKAGE_TABLE__
+<footer>
+  <p>repo by <a href="https://osowoso.org">oSoWoSo</a> served by <a href="https://oscloud.cz">oscloud.cz</a></p>
+</footer>
+__SVGCOLOR__
+</body>
+</html>
