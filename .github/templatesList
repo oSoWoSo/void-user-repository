@@ -2,6 +2,7 @@ Vish
 aquamarine
 brow6el
 btrfs-progs
+gh-lazy
 glaze
 hyprcursor
 hyprdynamicmonitors
@@ -25,6 +26,13 @@ libspng
 linuxcommandlibrary
 ly
 nebula-gtk
+python3-PyGithub
+python3-anysqlite
+python3-hishel
+python3-inline-snapshot
+python3-linkify-it-py
+python3-textual
+python3-uc-micro-py
 quickemu
 rgc
 sdbus-cpp
