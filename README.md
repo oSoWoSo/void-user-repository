@@ -18,6 +18,7 @@ Pick your architecture there and you will see README.
 | aquamarine | 0.9.5 | https://github.com/hyprwm/aquamarine | zenobit |  |
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit |  |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno |  |
+| corekeyboard | 5.0.1 | https://gitlab.com/cubocore/coreapps/corekeyboard | zenobit |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
@@ -41,6 +42,7 @@ Pick your architecture there and you will see README.
 | hyprtoolkit | 0.3.0 | https://github.com/hyprwm/hyprtoolkit | zenobit |  |
 | hyprutils | 0.10.2 | https://github.com/hyprwm/hyprutils | zenobit |  |
 | hyprwayland-scanner | 0.4.5 | https://github.com/hyprwm/hyprwayland-scanner | zenobit |  |
+| libcprime | 5.0.1 | https://gitlab.com/cubocore/libcprime | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |

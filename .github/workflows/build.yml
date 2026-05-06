@@ -30,6 +30,7 @@ on:
         - aquamarine
         - brow6el
         - btrfs-progs
+        - corekeyboard
         - drako
         - gh-lazy
         - glaze
@@ -53,6 +54,7 @@ on:
         - hyprtoolkit
         - hyprutils
         - hyprwayland-scanner
+        - libcprime
         - libspng
         - linuxcommandlibrary
         - ly
