@@ -1,1 +1,23 @@
-docs/
+# Exclude everything except needed
+/*
+
+# Website sources
+!/src
+
+# Templates
+!/srcpkgs
+
+# xut: Install and update unofficial packages in Void Linux
+!/xut
+
+# Workflows etc
+!/.github
+
+# Files
+!/.gitignore
+!/.gitmodules
+!/create-web
+!/LICENSE
+!/README.md
+!/shlibs_append
+!/shlibs_remove
