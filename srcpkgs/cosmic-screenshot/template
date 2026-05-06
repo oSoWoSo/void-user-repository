@@ -3,7 +3,6 @@ pkgname=cosmic-screenshot
 version=1.0.11
 revision=1
 archs="x86_64* i686"
-build_options="sccache"
 build_style=cargo
 hostmakedepends="just $(vopt_if sccache "rust-sccache")"
 short_desc="COSMIC Screenshot Utility"
@@ -12,6 +11,7 @@ license="GPL-3.0-only"
 homepage="https://github.com/pop-os/cosmic-screenshot"
 distfiles="https://github.com/pop-os/cosmic-screenshot/archive/refs/tags/epoch-${version}.tar.gz"
 checksum=83284dbe7bb6b729c291dc661c41b59802504329295d8a89aeee36ad5d28df5a
+build_options="sccache"
 
 pre_build() {
 	$(vopt_if sccache "export RUSTC_WRAPPER=/usr/bin/sccache")
