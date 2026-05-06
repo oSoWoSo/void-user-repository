@@ -31,6 +31,32 @@ on:
         - brow6el
         - btrfs-progs
         - corekeyboard
+        - cosmic-applets
+        - cosmic-applibrary
+        - cosmic-bg
+        - cosmic-comp
+        - cosmic-desktop-full
+        - cosmic-desktop-minimal
+        - cosmic-edit
+        - cosmic-files
+        - cosmic-greeter
+        - cosmic-icons
+        - cosmic-idle
+        - cosmic-initial-setup
+        - cosmic-launcher
+        - cosmic-notifications
+        - cosmic-osd
+        - cosmic-panel
+        - cosmic-player
+        - cosmic-randr
+        - cosmic-screenshot
+        - cosmic-session
+        - cosmic-settings
+        - cosmic-settings-daemon
+        - cosmic-term
+        - cosmic-theme-editor
+        - cosmic-wallpapers
+        - cosmic-workspaces-epoch
         - drako
         - gh-lazy
         - glaze
@@ -59,6 +85,10 @@ on:
         - linuxcommandlibrary
         - ly
         - nebula-gtk
+        - pop-fonts
+        - pop-icons
+        - pop-launcher
+        - pop-sounds-theme
         - python3-PyGithub
         - python3-anysqlite
         - python3-hishel
@@ -73,6 +103,7 @@ on:
         - tdf
         - tomlplusplus
         - vbm
+        - xdg-desktop-portal-cosmic
         - xdg-desktop-portal-hyprland
         - zen-browser
         - zig
