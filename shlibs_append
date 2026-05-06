@@ -12,3 +12,6 @@ libvk_swiftshader.so brow6el-0.3.4_1
 libvulkan.so.1 brow6el-0.3.4_1
 libcef.so brow6el-0.3.4_1
 libEGL.so brow6el-0.3.4_1
+libcprime-core.so.5 libcprime-5.0.1_1
+libcprime-gui.so.5 libcprime-5.0.1_1
+libcprime-widgets.so.5 libcprime-5.0.1_1
