@@ -8,7 +8,8 @@ Use at your own discretion.
 
 ## Overview
 A collection of template files for building packages on Void Linux.  
-If you dont wish to build the packages locally, https://repo.osowoso.org repository provides prebuilt binaries.
+If you dont wish to build the packages locally, https://repo.osowoso.org repository provides prebuilt binaries.  
+Pick your architecture there and you will see README.
 
 ## Available packages
 | package | version | homepage | maintainer | notes |
