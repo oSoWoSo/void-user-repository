@@ -170,15 +170,37 @@ jobs:
             test="-Q"
           fi
 
+          pkg_arch_ok() {
+            local pkg="$1" target="$2"
+            local template="srcpkgs/${pkg}/template"
+            [ -f "$template" ] || return 0
+            local archs last="" pat
+            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
+            [ -z "$archs" ] && return 0
+            for pat in $archs; do
+              last="$pat"
+              case "$target" in
+                ${pat#~})
+                  case "$pat" in ~*) return 1 ;; *) return 0 ;; esac
+                  ;;
+              esac
+            done
+            case "$last" in ~*) return 0 ;; esac
+            return 1
+          }
+
           echo "==> Resolving dependencies for: $packages"
           PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $packages)
-          failed=""
 
           echo "==> Build order with dependencies:"
           echo "$PKGS"
           echo
 
           for pkg in ${PKGS}; do
+            if ! pkg_arch_ok "$pkg" "${ARCH}"; then
+              echo "==> Skipping ${pkg}: not available for ${ARCH}"
+              continue
+            fi
             echo "==> Building ${pkg}"
             sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
             echo
@@ -283,15 +305,37 @@ jobs:
             test="-Q"
           fi
 
+          pkg_arch_ok() {
+            local pkg="$1" target="$2"
+            local template="srcpkgs/${pkg}/template"
+            [ -f "$template" ] || return 0
+            local archs last="" pat
+            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
+            [ -z "$archs" ] && return 0
+            for pat in $archs; do
+              last="$pat"
+              case "$target" in
+                ${pat#~})
+                  case "$pat" in ~*) return 1 ;; *) return 0 ;; esac
+                  ;;
+              esac
+            done
+            case "$last" in ~*) return 0 ;; esac
+            return 1
+          }
+
           echo "==> Resolving dependencies for: $packages"
           PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $packages)
-          failed=""
 
           echo "==> Build order with dependencies:"
           echo "$PKGS"
           echo
 
           for pkg in ${PKGS}; do
+            if ! pkg_arch_ok "$pkg" "${ARCH}"; then
+              echo "==> Skipping ${pkg}: not available for ${ARCH}"
+              continue
+            fi
             echo "==> Building ${pkg}"
             sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
             echo

@@ -1,4 +1,5 @@
-# Currently in TESTING mode. Not for use yet
+# Currently in TESTING mode
+Don't depend on it yet. PRs welcome 🤗
 
 ## DISCLAIMER
 
