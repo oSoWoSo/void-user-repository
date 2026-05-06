@@ -18,6 +18,7 @@ Pick your architecture there and you will see README.
 | aquamarine | 0.9.5 | https://github.com/hyprwm/aquamarine | zenobit |  |
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit |  |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno |  |
+| drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |

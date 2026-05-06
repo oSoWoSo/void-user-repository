@@ -27,6 +27,7 @@ on:
         - aquamarine
         - brow6el
         - btrfs-progs
+        - drako
         - gh-lazy
         - glaze
         - hyprcursor
