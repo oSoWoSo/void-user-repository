@@ -1,3 +1,5 @@
+# Currently in TESTING mode. Not for use yet
+
 ## DISCLAIMER
 
 This project is **not affiliated with or endorsed by the Void Linux project** or its maintainers.  
