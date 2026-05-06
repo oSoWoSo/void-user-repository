@@ -1,6 +1,9 @@
 name: matrix build
 
 on:
+  push:
+    paths:
+      - 'srcpkgs/**'
   pull_request:
     paths:
       - 'srcpkgs/**'
