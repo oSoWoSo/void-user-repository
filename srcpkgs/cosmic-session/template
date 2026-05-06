@@ -13,7 +13,7 @@ maintainer="Bella Wagner <belladev109@proton.me>"
 license="GPL-3.0-only"
 homepage="https://github.com/pop-os/cosmic-session"
 distfiles="https://github.com/pop-os/cosmic-session/archive/refs/tags/epoch-${version}.tar.gz"
-checksum=8819c80fa499625630e8aeccb6c2d68811775f6a8d736b4356b94dffe781ee15
+checksum=a9531810b7371adf9e304da36749a8bc3a14cc896bd9ad3ddde8d9907a2ce89d
 build_options="sccache"
 
 pre_build() {

@@ -13,7 +13,7 @@ maintainer="Bella Wagner <belladev109@proton.me>"
 license="GPL-3.0-only"
 homepage="https://github.com/pop-os/cosmic-workspaces-epoch"
 distfiles="https://github.com/pop-os/cosmic-workspaces-epoch/archive/refs/tags/epoch-${version}.tar.gz"
-checksum=99f02712367438ff99867ef553f194a03b80c969f58160332f625ffe5f2bb346
+checksum=bbb04a3c4341229966c9ff68d6e46910f921778b5ba0d86dbd6ec77e752ad22a
 build_options="sccache"
 
 if [ $(vopt_if sccache "true" "false") == "true" ]; then

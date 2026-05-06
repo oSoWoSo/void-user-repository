@@ -5,7 +5,8 @@ revision=1
 archs="x86_64* i686"
 build_style="cargo"
 configure_args=" --all"
-hostmakedepends="pkg-config just cargo cargo-auditable $(vopt_if sccache "rust-sccache")"
+hostmakedepends="pkg-config just cargo cargo-auditable
+ $(vopt_if sccache "rust-sccache")"
 makedepends="libxkbcommon-devel"
 checkdepends="qalculate"
 short_desc="Modular IPC-based desktop launcher service"
