@@ -21,6 +21,7 @@ Pick your architecture there and you will see README.
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
+| gofer | 0.2.0 | https://codeberg.org/JakeAtLinux/Gofer | zenobit |  |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |
 | hyprdynamicmonitors | 1.3.5 | https://github.com/fiffeek/hyprdynamicmonitors | zenobit |  |
 | hyprgraphics | 0.3.0 | https://github.com/hyprwm/hyprgraphics | zenobit |  |

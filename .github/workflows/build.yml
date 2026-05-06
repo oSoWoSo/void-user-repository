@@ -33,6 +33,7 @@ on:
         - drako
         - gh-lazy
         - glaze
+        - gofer
         - hyprcursor
         - hyprdynamicmonitors
         - hyprgraphics
