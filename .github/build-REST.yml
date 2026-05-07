@@ -14,6 +14,7 @@ jobs:
     outputs:
       packages: ${{ steps.detect.outputs.packages }}
       removed: ${{ steps.detect.outputs.removed }}
+      matrix: ${{ steps.detect.outputs.matrix }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -49,6 +50,46 @@ jobs:
             echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
           fi
 
+          pkg_arch_ok() {
+            local pkg="$1" target="$2"
+            local template="srcpkgs/${pkg}/template"
+            [ -f "$template" ] || return 0
+            local archs last="" pat
+            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
+            [ -z "$archs" ] && return 0
+            for pat in $archs; do
+              last="$pat"
+              case "$target" in
+                ${pat#~}) case "$pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
+              esac
+            done
+            case "$last" in ~*) return 0 ;; esac
+            return 1
+          }
+
+          arch_needed() {
+            local target="$1"
+            for pkg in $packages; do
+              pkg_arch_ok "$pkg" "$target" && return 0
+            done
+            return 1
+          }
+
+          add_cfg() {
+            [ -n "$matrix_configs" ] && matrix_configs="${matrix_configs},"
+            matrix_configs="${matrix_configs}{\"arch\":\"$1\",\"host\":\"$2\",\"libc\":\"$3\",\"platform\":\"linux/amd64\",\"test\":$4}"
+          }
+
+          matrix_configs=""
+          if [ -n "$packages" ]; then
+            arch_needed "x86_64"       && add_cfg "x86_64"       "x86_64"      "glibc" 1
+            arch_needed "aarch64"      && add_cfg "aarch64"      "x86_64"      "glibc" 0
+            arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "musl"  1
+            arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "musl"  0
+            [ -z "$matrix_configs" ] && add_cfg "x86_64" "x86_64" "glibc" 1
+          fi
+          echo "matrix={\"config\":[${matrix_configs}]}" >> "$GITHUB_OUTPUT"
+
   test-pr:
     name: Test PR changes
     needs: detect
@@ -65,12 +106,7 @@ jobs:
         TEST: '${{ matrix.config.test }}'
     strategy:
       fail-fast: false
-      matrix:
-        config:
-          - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
-          - { arch: aarch64,      host: x86_64,      libc: glibc, platform: linux/amd64, test: 0 }
-          - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
-          - { arch: aarch64-musl, host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 0 }
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
 
     steps:
       - name: Prepare container
@@ -222,12 +258,7 @@ jobs:
         TEST: '${{ matrix.config.test }}'
     strategy:
       fail-fast: false
-      matrix:
-        config:
-          - { arch: x86_64,       host: x86_64,      libc: glibc, platform: linux/amd64, test: 1 }
-          - { arch: aarch64,      host: x86_64,      libc: glibc, platform: linux/amd64, test: 0 }
-          - { arch: x86_64-musl,  host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 1 }
-          - { arch: aarch64-musl, host: x86_64-musl, libc: musl,  platform: linux/amd64, test: 0 }
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
 
     steps:
       - name: Prepare container
@@ -393,79 +424,92 @@ jobs:
           fi
 
           WORK_DIR=$(mktemp -d)
+          DELETED_PKGS=""
 
           # Ensure remote directory exists
           curl -s -X MKCOL "${WEBDAV}/" -u ":${SURFER_TOKEN}" || true
 
-          # List existing .xbps files on Surfer via WebDAV
-          echo "==> Fetching existing file list"
-          EXISTING_PKGS=$(curl -s -X PROPFIND "${WEBDAV}/" \
+          # Fetch remote file list (for old-version cleanup and HTML generation)
+          echo "==> Fetching remote package list"
+          REMOTE_LIST=$(curl -s -X PROPFIND "${WEBDAV}/" \
             -H "Depth: 1" \
             -u ":${SURFER_TOKEN}" 2>/dev/null \
             | grep -o '<D:href>[^<]*\.xbps</D:href>' \
             | sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true)
 
-          # Download existing packages to rebuild complete index
           cd "$WORK_DIR"
-          if [ -n "$EXISTING_PKGS" ]; then
-            echo "==> Downloading existing packages"
-            for pkg in $EXISTING_PKGS; do
-              curl -sf -o "$pkg" "${SURFER_URL}/${ARCH}/${pkg}" \
-                -u ":${SURFER_TOKEN}" && echo "  Downloaded: $pkg" || true
-              curl -sf -o "${pkg}.sig2" "${SURFER_URL}/${ARCH}/${pkg}.sig2" \
-                -u ":${SURFER_TOKEN}" 2>/dev/null || true
-            done
-          fi
 
-          # Remove packages for deleted templates
+          # Download only the repodata — xbps-rindex -a auto-replaces old version entries
+          echo "==> Downloading repodata"
+          curl -sf -o "${ARCH}-repodata" "${SURFER_URL}/${ARCH}/${ARCH}-repodata" \
+            -u ":${SURFER_TOKEN}" 2>/dev/null || true
+
+          # Copy newly built packages to work dir
+          cp "$BUILDDIR"/*.xbps . 2>/dev/null || true
+          cp "$BUILDDIR"/*.xbps.sig2 . 2>/dev/null || true
+
+          # Delete old versions of updated packages from remote (no download needed)
+          echo "==> Cleaning old package versions from remote"
+          for new_pkg in "$BUILDDIR"/*.xbps; do
+            [ -f "$new_pkg" ] || continue
+            new_basename=$(basename "$new_pkg")
+            base="${new_basename%.xbps}"
+            without_arch="${base%.*}"
+            pkg_ver=$(printf '%s' "$without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
+            pkg_name="${without_arch%-${pkg_ver}}"
+
+            for old_pkg in $(printf '%s\n' $REMOTE_LIST | grep "^${pkg_name}-[0-9]"); do
+              [ "$old_pkg" = "$new_basename" ] && continue
+              echo "  Deleting old: $old_pkg"
+              curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
+              curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
+              DELETED_PKGS="${DELETED_PKGS}${old_pkg}
+"
+            done
+          done
+
+          # Handle removed templates: download old pkg only to remove its index entry
           removed="${{ needs.detect.outputs.removed }}"
           if [ -n "$removed" ]; then
             echo "==> Removing packages for deleted templates: $removed"
             for pkg in $removed; do
-              for old_pkg in "${pkg}"-*.xbps; do
-                [ -f "$old_pkg" ] || continue
+              for old_pkg in $(printf '%s\n' $REMOTE_LIST | grep "^${pkg}-[0-9]"); do
                 echo "  Removing: $old_pkg"
+                if curl -sf -o "$old_pkg" "${SURFER_URL}/${ARCH}/${old_pkg}" \
+                    -u ":${SURFER_TOKEN}" 2>/dev/null; then
+                  xbps-rindex -r . "$old_pkg" || true
+                  rm -f "$old_pkg" "${old_pkg}.sig2"
+                fi
                 curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
                 curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
-                rm -f "$old_pkg" "${old_pkg}.sig2"
+                DELETED_PKGS="${DELETED_PKGS}${old_pkg}
+"
               done
             done
           fi
 
-          # Replace old versions with newly built packages
-          echo "==> Processing new packages"
-          for new_pkg in "$BUILDDIR"/*.xbps; do
-            [ -f "$new_pkg" ] || continue
-            new_basename=$(basename "$new_pkg")
-            new_basename_no_ext="${new_basename%.xbps}"
-            pkg_name="${new_basename_no_ext%-*}"
-
-            for old_pkg in "${pkg_name}"-*.xbps; do
-              [ -f "$old_pkg" ] || continue
-              [ "$old_pkg" = "$new_basename" ] && continue
-              echo "  Removing old: $old_pkg"
-              curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
-              curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
-              rm -f "$old_pkg" "${old_pkg}.sig2"
-            done
-
-            cp "$new_pkg" ./
-            [ -f "${new_pkg}.sig2" ] && cp "${new_pkg}.sig2" ./ || true
-          done
-
-          # Build complete repository index and sign it
-          echo "==> Building repository index"
+          # Update index: -a replaces old version entries automatically
+          echo "==> Updating repository index"
           xbps-rindex -a *.xbps 2>/dev/null || true
 
+          # Sign the repository
           printf "%s\n" "$PRIV_KEY" > private.pem
           chmod 600 private.pem
           xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem "$PWD"
-          xbps-rindex -c "$PWD"
           rm -f private.pem
 
-          # Generate index.html using shared template
+          # Generate index.html: final list = (remote + new) - deleted
           echo "==> Generating index.html"
           TEMPLATE="${GITHUB_WORKSPACE}/extra/.github/arch-index-template.html"
+
+          NEW_BASENAMES=$(ls "$BUILDDIR"/*.xbps 2>/dev/null | xargs -r -I{} basename {} || true)
+          FINAL_PKGS=$(
+            { printf '%s\n' $REMOTE_LIST; printf '%s\n' $NEW_BASENAMES; } \
+            | grep '\.xbps$' | sort -u
+          )
+          while IFS= read -r dpkg; do
+            [ -n "$dpkg" ] && FINAL_PKGS=$(printf '%s\n' "$FINAL_PKGS" | grep -v "^${dpkg}$")
+          done <<< "$DELETED_PKGS"
 
           NAV_TMP=$(mktemp)
           PKG_TMP=$(mktemp)
@@ -479,14 +523,15 @@ jobs:
 
           {
             printf '<table>\n<thead><tr><th>package</th><th>version</th><th>download</th></tr></thead>\n<tbody>\n'
-            for xbps_file in $(ls *.xbps 2>/dev/null | sort); do
+            while IFS= read -r xbps_file; do
+              [ -z "$xbps_file" ] && continue
               base="${xbps_file%.xbps}"
               without_arch="${base%.*}"
               pkg_ver=$(printf '%s' "$without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
               pkg_name="${without_arch%-${pkg_ver}}"
               printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="https://repo.osowoso.org/%s/%s">&#x2b07; %s</a></td></tr>\n' \
                 "$pkg_name" "$pkg_ver" "${ARCH}" "$xbps_file" "$xbps_file"
-            done
+            done <<< "$(printf '%s\n' $FINAL_PKGS | sort)"
             printf '</tbody>\n</table>\n'
           } > "$PKG_TMP"
 
@@ -507,9 +552,10 @@ jobs:
           > index.html
 
           rm -f "$NAV_TMP" "$PKG_TMP"
-          echo "  Generated index.html ($(ls *.xbps 2>/dev/null | wc -l) packages)"
+          pkg_count=$(printf '%s\n' "$FINAL_PKGS" | grep -c '.' || echo 0)
+          echo "  Generated index.html (${pkg_count} packages)"
 
-          # Upload everything to Surfer
+          # Upload only new packages + updated repodata + index.html
           echo "==> Uploading to Surfer"
           for file in *.xbps *.xbps.sig2 *-repodata index.html; do
             [ -f "$file" ] || continue
