@@ -1,15 +1,15 @@
 # Template file for 'shattered-pixel-dungeon'
 pkgname=shattered-pixel-dungeon
-version=3.2.5
+version=3.3.8
 revision=1
-hostmakedepends="openjdk11 gradle"
+hostmakedepends="openjdk17 gradle"
 depends="virtual?java-runtime desktop-file-utils hicolor-icon-theme"
 short_desc="Open-source roguelike dungeon crawler with randomized levels and enemies"
-maintainer="Mihail Ivanchev <contact@ivanchev.net>"
+maintainer="zenobit <zenobit@disroot.org>"
 license="GPL-3.0-only"
 homepage="https://github.com/00-Evan/shattered-pixel-dungeon"
 distfiles="https://github.com/00-Evan/shattered-pixel-dungeon/archive/v${version}.tar.gz"
-checksum=698e3c2b4b7b159e102a5fcd82fde27747c49c7cc21009a1692f52c17d45cce9
+checksum=60ce07f2274be15c9d4329f3ded5ab890461e9bc1600a90693d2747d33a82377
 
 do_build() {
 	vsed -i settings.gradle -e 's|include.*:android.*|//&|'
