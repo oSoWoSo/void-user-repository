@@ -1,0 +1,19 @@
+# Template file for 'vtm'
+pkgname=vtm
+version=2026.05.01
+revision=1
+build_style=cmake
+configure_args="-DSTB_INCLUDE_DIR=/usr/include/stb -DBUILD_TESTING=ON"
+hostmakedepends="pkg-config lunasvg stb"
+makedepends="freetype-devel harfbuzz-devel lua54-devel"
+depends="lunasvg"
+short_desc="Text-based desktop environment"
+maintainer="zenobit <zenobit@disroot.org>"
+license="MIT"
+homepage="https://github.com/directvt/vtm"
+distfiles="https://github.com/directvt/vtm/archive/refs/tags/v${version}.tar.gz"
+checksum=8f4cb2b2c951fa02f4b90f7feddc14448c23cf68cc6e21834f3537bf914a2807
+
+post_install() {
+	vlicense LICENSE
+}
