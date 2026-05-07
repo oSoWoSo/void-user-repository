@@ -20,32 +20,32 @@ Pick your architecture there and you will see README.
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit |  |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno |  |
 | corekeyboard | 5.0.1 | https://gitlab.com/cubocore/coreapps/corekeyboard | zenobit |  |
-| cosmic-applets | 1.0.11 | https://github.com/pop-os/cosmic-applets | Bella | x86_64* i686 |
-| cosmic-applibrary | 1.0.11 | https://github.com/pop-os/cosmic-applibrary | Bella | x86_64* i686 |
-| cosmic-bg | 1.0.11 | https://github.com/pop-os/cosmic-bg | Bella | x86_64* i686 |
-| cosmic-comp | 1.0.11 | https://github.com/pop-os/cosmic-comp | Bella | x86_64* i686 |
-| cosmic-desktop-full | 1.0.11 | https://github.com/pop-os/cosmic-epoch | Bella | x86_64* |
-| cosmic-desktop-minimal | 1.0.11 | https://github.com/pop-os/cosmic-epoch | Bella | x86_64* |
-| cosmic-edit | 1.0.11 | https://github.com/pop-os/cosmic-edit | Bella | x86_64* |
-| cosmic-files | 1.0.11 | https://github.com/pop-os/cosmic-files | Bella | x86_64* |
-| cosmic-greeter | 1.0.11 | https://github.com/pop-os/cosmic-greeter | Bella | x86_64* i686 |
-| cosmic-icons | 1.0.11 | https://github.com/pop-os/cosmic-icons | Bella |  |
-| cosmic-idle | 1.0.11 | https://github.com/pop-os/cosmic-idle | Bella | x86_64* i686 |
-| cosmic-initial-setup | 1.0.11 | https://github.com/pop-os/cosmic-initial-setup | Bella | x86_64* i686 |
-| cosmic-launcher | 1.0.11 | https://github.com/pop-os/cosmic-launcher | Bella | x86_64* i686 |
-| cosmic-notifications | 1.0.11 | https://github.com/pop-os/cosmic-notifications | Bella | x86_64* i686 |
-| cosmic-osd | 1.0.11 | https://github.com/pop-os/cosmic-osd | Bella | x86_64* i686 |
-| cosmic-panel | 1.0.11 | https://github.com/pop-os/cosmic-panel | Bella | x86_64* i686 |
-| cosmic-player | 1.0.11 | https://github.com/pop-os/cosmic-player | Bella | x86_64* i686 |
-| cosmic-randr | 1.0.11 | https://github.com/pop-os/cosmic-randr | Bella | x86_64* i686 |
-| cosmic-screenshot | 1.0.11 | https://github.com/pop-os/cosmic-screenshot | Bella | x86_64* i686 |
-| cosmic-session | 1.0.11 | https://github.com/pop-os/cosmic-session | Bella | x86_64* i686 |
-| cosmic-settings | 1.0.11 | https://github.com/pop-os/cosmic-settings | Bella | x86_64* i686 |
-| cosmic-settings-daemon | 1.0.11 | https://github.com/pop-os/cosmic-settings-daemon | Bella | x86_64* i686 |
-| cosmic-term | 1.0.11 | https://github.com/pop-os/cosmic-term | Bella | x86_64* |
-| cosmic-theme-editor | 1 | https://github.com/pop-os/cosmic-theme-editor | Bella | x86_64* i686 |
-| cosmic-wallpapers | 1.0.0 | https://github.com/pop-os/cosmic-wallpapers | Bella |  |
-| cosmic-workspaces-epoch | 1.0.11 | https://github.com/pop-os/cosmic-workspaces-epoch | Bella | x86_64* i686 |
+| cosmic-applets | 1.0.12 | https://github.com/pop-os/cosmic-applets | Bella | x86_64* i686 |
+| cosmic-applibrary | 1.0.12 | https://github.com/pop-os/cosmic-applibrary | Bella | x86_64* i686 |
+| cosmic-bg | 1.0.12 | https://github.com/pop-os/cosmic-bg | Bella | x86_64* i686 |
+| cosmic-comp | 1.0.12 | https://github.com/pop-os/cosmic-comp | Bella | x86_64* i686 |
+| cosmic-desktop-full | 1.0.12 | https://github.com/pop-os/cosmic-epoch | Bella | x86_64* |
+| cosmic-desktop-minimal | 1.0.12 | https://github.com/pop-os/cosmic-epoch | Bella | x86_64* |
+| cosmic-edit | 1.0.12 | https://github.com/pop-os/cosmic-edit | Bella | x86_64* |
+| cosmic-files | 1.0.12 | https://github.com/pop-os/cosmic-files | Bella | x86_64* |
+| cosmic-greeter | 1.0.12 | https://github.com/pop-os/cosmic-greeter | Bella | x86_64* i686 |
+| cosmic-icons | 1.0.12 | https://github.com/pop-os/cosmic-icons | Bella |  |
+| cosmic-idle | 1.0.12 | https://github.com/pop-os/cosmic-idle | Bella | x86_64* i686 |
+| cosmic-initial-setup | 1.0.12 | https://github.com/pop-os/cosmic-initial-setup | Bella | x86_64* i686 |
+| cosmic-launcher | 1.0.12 | https://github.com/pop-os/cosmic-launcher | Bella | x86_64* i686 |
+| cosmic-notifications | 1.0.12 | https://github.com/pop-os/cosmic-notifications | Bella | x86_64* i686 |
+| cosmic-osd | 1.0.12 | https://github.com/pop-os/cosmic-osd | Bella | x86_64* i686 |
+| cosmic-panel | 1.0.12 | https://github.com/pop-os/cosmic-panel | Bella | x86_64* i686 |
+| cosmic-player | 1.0.12 | https://github.com/pop-os/cosmic-player | Bella | x86_64* i686 |
+| cosmic-randr | 1.0.12 | https://github.com/pop-os/cosmic-randr | Bella | x86_64* i686 |
+| cosmic-screenshot | 1.0.12 | https://github.com/pop-os/cosmic-screenshot | Bella | x86_64* i686 |
+| cosmic-session | 1.0.12 | https://github.com/pop-os/cosmic-session | Bella | x86_64* i686 |
+| cosmic-settings | 1.0.12 | https://github.com/pop-os/cosmic-settings | Bella | x86_64* i686 |
+| cosmic-settings-daemon | 1.0.12 | https://github.com/pop-os/cosmic-settings-daemon | Bella | x86_64* i686 |
+| cosmic-term | 1.0.12 | https://github.com/pop-os/cosmic-term | Bella | x86_64* |
+| cosmic-theme-editor | 0.0.0 | https://github.com/pop-os/cosmic-theme-editor | Bella | x86_64* i686 |
+| cosmic-wallpapers | 1.0.12 | https://github.com/pop-os/cosmic-wallpapers | Bella |  |
+| cosmic-workspaces-epoch | 1.0.12 | https://github.com/pop-os/cosmic-workspaces-epoch | Bella | x86_64* i686 |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
@@ -74,7 +74,7 @@ Pick your architecture there and you will see README.
 | linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | nebula-gtk | 1.1.3 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
-| pop-fonts | 1 | https://github.com/pop-os/fonts | Bella |  |
+| pop-fonts | 0.0.0 | https://github.com/pop-os/fonts | Bella |  |
 | pop-icons | 3.5.1 | https://github.com/pop-os/icon-theme | Bella |  |
 | pop-launcher | 1.2.7 | https://github.com/pop-os/launcher | Bella | x86_64* i686 |
 | pop-sounds-theme | 5.5.1 | https://github.com/pop-os/gtk-theme | Bella |  |
@@ -92,7 +92,7 @@ Pick your architecture there and you will see README.
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | vbm | 1.0.1 | https://codeberg.org/oSoWoSo/vbm | zenobit |  |
-| xdg-desktop-portal-cosmic | 1.0.11 | https://github.com/pop-os/xdg-desktop-portal-cosmic | Bella | x86_64* |
+| xdg-desktop-portal-cosmic | 1.0.12 | https://github.com/pop-os/xdg-desktop-portal-cosmic | Bella | x86_64* |
 | xdg-desktop-portal-hyprland | 1.3.11 | https://github.com/hyprwm/xdg-desktop-portal-hyprland | zenobit |  |
 | zen-browser | 1.17.4b | https://www.zen-browser.app/ | Encoded14 | x86_64 aarch64 |
 | zig | 0.14.1 | https://ziglang.org | Orphaned | x86_64* aarch64* |
