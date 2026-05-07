@@ -46,6 +46,7 @@ Pick your architecture there and you will see README.
 | libcprime | 5.0.1 | https://gitlab.com/cubocore/libcprime | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
+| lunasvg | 3.5.0 | https://github.com/sammycage/lunasvg | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
 | python3-PyGithub | 2.8.1 | https://pygithub.readthedocs.io/ | Orphan |  |

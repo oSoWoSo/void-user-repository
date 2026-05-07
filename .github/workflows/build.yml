@@ -57,6 +57,7 @@ on:
         - libcprime
         - libspng
         - linuxcommandlibrary
+        - lunasvg
         - ly
         - nebula-gtk
         - python3-PyGithub
