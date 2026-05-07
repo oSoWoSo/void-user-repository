@@ -577,8 +577,7 @@ jobs:
               echo "  Deleting old: $old_pkg"
               curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
               curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
-              DELETED_PKGS="${DELETED_PKGS}${old_pkg}
-"
+              DELETED_PKGS="${DELETED_PKGS} ${old_pkg}"
             done
           done
 
@@ -596,8 +595,7 @@ jobs:
                 fi
                 curl -s -X DELETE "${WEBDAV}/${old_pkg}" -u ":${SURFER_TOKEN}" || true
                 curl -s -X DELETE "${WEBDAV}/${old_pkg}.sig2" -u ":${SURFER_TOKEN}" || true
-                DELETED_PKGS="${DELETED_PKGS}${old_pkg}
-"
+                DELETED_PKGS="${DELETED_PKGS} ${old_pkg}"
               done
             done
           fi
@@ -621,9 +619,9 @@ jobs:
             { printf '%s\n' $REMOTE_LIST; printf '%s\n' $NEW_BASENAMES; } \
             | grep '\.xbps$' | sort -u
           )
-          while IFS= read -r dpkg; do
-            [ -n "$dpkg" ] && FINAL_PKGS=$(printf '%s\n' "$FINAL_PKGS" | grep -v "^${dpkg}$")
-          done <<< "$DELETED_PKGS"
+          for dpkg in $DELETED_PKGS; do
+            FINAL_PKGS=$(printf '%s\n' "$FINAL_PKGS" | grep -v "^${dpkg}$")
+          done
 
           NAV_TMP=$(mktemp)
           PKG_TMP=$(mktemp)
