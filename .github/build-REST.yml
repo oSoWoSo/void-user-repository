@@ -14,6 +14,7 @@ jobs:
     outputs:
       packages: ${{ steps.detect.outputs.packages }}
       removed: ${{ steps.detect.outputs.removed }}
+      archs_skip: ${{ steps.arch-check.outputs.archs_skip }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -49,10 +50,51 @@ jobs:
             echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
           fi
 
+      - name: Check arch compatibility per platform
+        id: arch-check
+        run: |
+          packages="${{ steps.detect.outputs.packages }}"
+          skip_json='{"x86_64":false,"aarch64":false,"x86_64-musl":false,"aarch64-musl":false}'
+          [ -z "$packages" ] && { echo "archs_skip=$skip_json" >> "$GITHUB_OUTPUT"; exit 0; }
+
+          pkg_arch_ok() {
+            local pkg="$1" target="$2"
+            local template="srcpkgs/${pkg}/template"
+            [ -f "$template" ] || return 0
+            local archs last="" pat
+            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
+            [ -z "$archs" ] && return 0
+            for pat in $archs; do
+              last="$pat"
+              case "$target" in
+                ${pat#~}) case "$pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
+              esac
+            done
+            case "$last" in ~*) return 0 ;; esac
+            return 1
+          }
+
+          for arch in x86_64 aarch64 x86_64-musl aarch64-musl; do
+            skip=true
+            for pkg in $packages; do
+              if pkg_arch_ok "$pkg" "$arch"; then
+                skip=false; break
+              fi
+            done
+            case $arch in
+              x86_64)       skip_x86_64=$skip ;;
+              aarch64)      skip_aarch64=$skip ;;
+              x86_64-musl)  skip_x86_64_musl=$skip ;;
+              aarch64-musl) skip_aarch64_musl=$skip ;;
+            esac
+          done
+
+          echo "archs_skip={\"x86_64\":${skip_x86_64},\"aarch64\":${skip_aarch64},\"x86_64-musl\":${skip_x86_64_musl},\"aarch64-musl\":${skip_aarch64_musl}}" >> "$GITHUB_OUTPUT"
+
   test-pr:
     name: Test PR changes
     needs: detect
-    if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
+    if: github.event_name == 'pull_request' && needs.detect.outputs.packages != '' && !fromJson(needs.detect.outputs.archs_skip)[matrix.config.arch]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
@@ -209,7 +251,7 @@ jobs:
   build:
     name: Build and publish packages
     needs: detect
-    if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
+    if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != '' && !fromJson(needs.detect.outputs.archs_skip)[matrix.config.arch]
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
