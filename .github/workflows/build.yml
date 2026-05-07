@@ -109,6 +109,7 @@ on:
         - xdg-desktop-portal-cosmic
         - xdg-desktop-portal-hyprland
         - xut
+        - zen-browser-aarch64-bin
         - zen-browser-bin
         - zig
 permissions:
