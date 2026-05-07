@@ -68,6 +68,7 @@ on:
         - python3-uc-micro-py
         - quickemu
         - rgc
+        - runkit
         - sdbus-cpp
         - shattered-pixel-dungeon
         - tdf

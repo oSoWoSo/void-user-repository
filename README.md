@@ -47,7 +47,7 @@ Pick your architecture there and you will see README.
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
-| nebula-gtk | 1.1.3 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
+| nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
 | python3-PyGithub | 2.8.1 | https://pygithub.readthedocs.io/ | Orphan |  |
 | python3-anysqlite | 0.0.5 | https://github.com/karpetrosyan/anysqlite | zenobit |  |
 | python3-hishel | 1.1.9 | https://github.com/karpetrosyan/hishel | zenobit |  |
@@ -57,6 +57,7 @@ Pick your architecture there and you will see README.
 | python3-uc-micro-py | 2.0.0 | https://github.com/tsutsu3/uc.micro-py | Orphaned |  |
 | quickemu | 4.9.9 | https://github.com/quickemu-project/quickemu | zenobit |  |
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
+| runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
 | shattered-pixel-dungeon | 3.2.5 | https://github.com/00-Evan/shattered-pixel-dungeon | Mihail |  |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
