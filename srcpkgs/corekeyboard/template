@@ -2,22 +2,9 @@
 pkgname=corekeyboard
 version=5.0.1
 revision=1
-#archs="i686 x86_64"
-#build_wrksrc=
 build_style=cmake
-#configure_args=""
-#go_import_path=""
-#make_build_args=""
-#make_install_args=""
-#conf_files=""
-#make_dirs="/var/log/dir 0755 root root"
-hostmakedepends="libcprime"
-#qt6-base
-#libxtst
-#libx11
-#libcprime
-makedepends="qt6-base-devel"
-#depends=""
+hostmakedepends="libcprime qt6-base"
+makedepends="libcprime qt6-base-devel"
 short_desc="X11 based virtual keyboard for C Suite"
 maintainer="zenobit <zenobit@disroot.org>"
 license="GPL-3.0-only"
