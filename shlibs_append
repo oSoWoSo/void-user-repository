@@ -15,3 +15,4 @@ libEGL.so brow6el-0.3.4_1
 libcprime-core.so.5 libcprime-5.0.1_1
 libcprime-gui.so.5 libcprime-5.0.1_1
 libcprime-widgets.so.5 libcprime-5.0.1_1
+liblunasvg.so.3 lunasvg-3.5.0_1
