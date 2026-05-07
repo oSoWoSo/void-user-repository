@@ -32,7 +32,7 @@ jobs:
           elif [ -n "${{ inputs.templates }}" ]; then
             packages=$(printf '%s ' ${{ inputs.templates }} | sed 's/ $//')
           elif [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
-            packages=$(git diff --name-only HEAD~1 HEAD -- 'srcpkgs/*/template' \
+            packages=$(git diff --diff-filter=ACMR --name-only HEAD~1 HEAD -- 'srcpkgs/*/template' \
               | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
             removed=$(git diff --name-status HEAD~1 HEAD -- 'srcpkgs/*/template' \
               | awk '$1=="D"{print $2}' | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
