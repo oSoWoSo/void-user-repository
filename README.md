@@ -98,5 +98,4 @@ Pick your architecture there and you will see README.
 | xdg-desktop-portal-cosmic | 1.0.12 | https://github.com/pop-os/xdg-desktop-portal-cosmic | Bella | x86_64* |
 | xdg-desktop-portal-hyprland | 1.3.11 | https://github.com/hyprwm/xdg-desktop-portal-hyprland | zenobit |  |
 | xut | 0.4.2 | https://codeberg.org/mobinmob/xut | mobinmob |  |
-| zen-browser | 1.17.4b | https://www.zen-browser.app/ | Encoded14 | x86_64 aarch64 |
 | zig | 0.14.1 | https://ziglang.org | Orphaned | x86_64* aarch64* |
