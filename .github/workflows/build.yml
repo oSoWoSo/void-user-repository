@@ -109,7 +109,6 @@ on:
         - xdg-desktop-portal-cosmic
         - xdg-desktop-portal-hyprland
         - xut
-        - zen-browser
         - zig
 permissions:
   contents: write
