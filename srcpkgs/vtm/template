@@ -4,8 +4,8 @@ version=2026.05.01
 revision=1
 build_style=cmake
 configure_args="-DSTB_INCLUDE_DIR=/usr/include/stb -DBUILD_TESTING=ON"
-hostmakedepends="pkg-config lunasvg stb"
-makedepends="freetype-devel harfbuzz-devel lua54-devel"
+hostmakedepends="pkg-config stb"
+makedepends="freetype-devel harfbuzz-devel lua54-devel lunasvg"
 depends="lunasvg"
 short_desc="Text-based desktop environment"
 maintainer="zenobit <zenobit@disroot.org>"
