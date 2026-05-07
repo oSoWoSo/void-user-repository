@@ -64,6 +64,7 @@ Pick your architecture there and you will see README.
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | vbm | 1.0.1 | https://codeberg.org/oSoWoSo/vbm | zenobit |  |
+| vtm | 2026.05.01 | https://github.com/directvt/vtm | zenobit |  |
 | xdg-desktop-portal-hyprland | 1.3.11 | https://github.com/hyprwm/xdg-desktop-portal-hyprland | zenobit |  |
 | zen-browser | 1.17.4b | https://www.zen-browser.app/ | Encoded14 | x86_64 aarch64 |
 | zig | 0.14.1 | https://ziglang.org | Orphaned | x86_64* aarch64* |
