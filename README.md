@@ -15,11 +15,16 @@ Pick your architecture there and you will see README.
 ## Structure
 - Main repository with templates on Codeberg https://codeberg.org/oSoWoSo/Void_Community_Repository
 - mirror Github repository + CI https://github.com/oSoWoSo/Void_Community_Repository (Here we build binary packages)
-- Binary repository https://repos.osowoso.org/
+- Binary repository https://repo.osowoso.org/
 
 ## How to use
-in https://repo.osowoso.org/`<architecture>` are easy to understand READMEs  
+in https://repo.osowoso.org/`(architecture)` are easy to understand READMEs  
 Just pick your architecture
+
+## How to contribute
+Clone Codeberg repo `git clone https://codeberg.org/oSoWoSo/Void_Community_Repository`
+Add your changes
+Create PR
 
 ## Available packages
 | package | version | homepage | maintainer | notes |
