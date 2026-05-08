@@ -209,9 +209,6 @@ jobs:
     needs: detect
     if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
       options: --platform ${{ matrix.config.platform }} --privileged
@@ -364,9 +361,6 @@ jobs:
     needs: detect
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
       options: --platform ${{ matrix.config.platform }} --privileged
@@ -641,7 +635,7 @@ jobs:
 
           {
             printf '<table>\n<thead><tr><th>package</th><th>version</th><th>download</th></tr></thead>\n<tbody>\n'
-            while IFS= read -r xbps_file; do
+            printf '%s\n' $FINAL_PKGS | sort | while IFS= read -r xbps_file; do
               [ -z "$xbps_file" ] && continue
               base="${xbps_file%.xbps}"
               without_arch="${base%.*}"
@@ -649,7 +643,7 @@ jobs:
               pkg_name="${without_arch%-${pkg_ver}}"
               printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="https://repo.osowoso.org/%s/%s">&#x2b07; %s</a></td></tr>\n' \
                 "$pkg_name" "$pkg_ver" "${ARCH}" "$xbps_file" "$xbps_file"
-            done <<< "$(printf '%s\n' $FINAL_PKGS | sort)"
+            done
             printf '</tbody>\n</table>\n'
           } > "$PKG_TMP"
 
