@@ -97,7 +97,7 @@ Create PR
 | lunasvg | 3.5.0 | https://github.com/sammycage/lunasvg | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | menu-themes | 0.8.0 | https://github.com/kando-menu/menu-themes | zenobit |  |
-| nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
+| nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | zenobit |  |
 | pop-fonts | 0.0.0 | https://github.com/pop-os/fonts | Bella |  |
 | pop-icons | 3.5.1 | https://github.com/pop-os/icon-theme | Bella |  |
 | pop-launcher | 1.2.7 | https://github.com/pop-os/launcher | Bella | x86_64* i686 |
