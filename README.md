@@ -22,8 +22,8 @@ in https://repo.osowoso.org/`(architecture)` are easy to understand READMEs
 Just pick your architecture
 
 ## How to contribute
-Clone Codeberg repo `git clone https://codeberg.org/oSoWoSo/Void_Community_Repository`
-Add your changes
+Clone Codeberg repo `git clone https://codeberg.org/oSoWoSo/Void_Community_Repository`  
+Add your changes  
 Create PR
 
 ## Available packages
