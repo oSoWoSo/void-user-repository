@@ -70,11 +70,13 @@ Pick your architecture there and you will see README.
 | hyprtoolkit | 0.3.0 | https://github.com/hyprwm/hyprtoolkit | zenobit |  |
 | hyprutils | 0.10.2 | https://github.com/hyprwm/hyprutils | zenobit |  |
 | hyprwayland-scanner | 0.4.5 | https://github.com/hyprwm/hyprwayland-scanner | zenobit |  |
+| kando | 2.3.0 | https://kando.menu | zenobit | x86_64 aarch64 |
 | libcprime | 5.0.1 | https://gitlab.com/cubocore/libcprime | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
 | lunasvg | 3.5.0 | https://github.com/sammycage/lunasvg | zenobit |  |
 | ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
+| menu-themes | 0.8.0 | https://github.com/kando-menu/menu-themes | zenobit |  |
 | nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | Letdown2491 |  |
 | pop-fonts | 0.0.0 | https://github.com/pop-os/fonts | Bella |  |
 | pop-icons | 3.5.1 | https://github.com/pop-os/icon-theme | Bella |  |
