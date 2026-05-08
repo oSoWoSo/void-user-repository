@@ -46,6 +46,7 @@ Pick your architecture there and you will see README.
 | cosmic-theme-editor | 0.0.0 | https://github.com/pop-os/cosmic-theme-editor | Bella | x86_64* i686 |
 | cosmic-wallpapers | 1.0.12 | https://github.com/pop-os/cosmic-wallpapers | Bella |  |
 | cosmic-workspaces-epoch | 1.0.12 | https://github.com/pop-os/cosmic-workspaces-epoch | Bella | x86_64* i686 |
+| desktop-tui | 0.3.2 | https://github.com/Julien-cpsn/desktop-tui | zenobit |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
