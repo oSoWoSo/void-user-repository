@@ -18,7 +18,7 @@ Pick your architecture there and you will see README.
 - Binary repository https://repos.osowoso.org/
 
 ## How to use
-in https://repos.osowoso.org/<architecture> are easy to understand READMEs  
+in https://repo.osowoso.org/`<architecture>` are easy to understand READMEs  
 Just pick your architecture
 
 ## Available packages
