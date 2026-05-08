@@ -18,15 +18,21 @@ Pick your architecture there and you will see README.
 - Binary repository https://repo.osowoso.org/
 
 ## How to use
-in https://repo.osowoso.org/`(architecture)` are easy to understand READMEs  
+in https://repo.osowoso.org/`(architecture)`  
+are easy to understand READMEs  
 Just pick your architecture
 
 ## How to contribute
-Clone Codeberg repo `git clone https://codeberg.org/oSoWoSo/Void_Community_Repository`  
-Add your changes  
+Clone Codeberg repo  
+`git clone https://codeberg.org/oSoWoSo/Void_Community_Repository`  
+
+Add your changes
+- When you change any shlib from upstream void-packages, changes my be reflected in `shlibs_remove` and `shlibe_append`
+- When you add new shlib add it to `shlibe_append`
+
 Create PR
 
-## Available packages
+## Available templates (packages when builded sucesfully)
 | package | version | homepage | maintainer | notes |
 |:--------|:--------|:---------|:-----------|:------|
 | Vish | 1.1.2 | https://github.com/Lluciocc/Vish | zenobit |  |
@@ -118,3 +124,5 @@ Create PR
 | zen-browser-aarch64-bin | 1.19.11b | https://github.com/zen-browser/desktop | Bella | aarch64 |
 | zen-browser-bin | 1.19.11b | https://github.com/zen-browser/desktop | Bella | x86_64 |
 | zig | 0.14.1 | https://ziglang.org | Orphaned | x86_64* aarch64* |
+
+Binary repository hosted thanks to [OScloud](https://OScloud.cz)
