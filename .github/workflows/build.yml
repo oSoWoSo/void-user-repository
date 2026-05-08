@@ -209,6 +209,9 @@ jobs:
     needs: detect
     if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
       options: --platform ${{ matrix.config.platform }} --privileged
@@ -361,6 +364,9 @@ jobs:
     needs: detect
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
     container:
       image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
       options: --platform ${{ matrix.config.platform }} --privileged
