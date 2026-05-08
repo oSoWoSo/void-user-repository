@@ -118,14 +118,14 @@ jobs:
 
       - name: Checkout repo (PR head)
         run: |
-          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
+          git clone "https://github.com/${{ github.repository }}.git" extra
           cd extra
           git fetch --no-tags origin "${{ github.event.pull_request.head.sha }}" --depth 1
           git checkout --detach "${{ github.event.pull_request.head.sha }}"
 
       - name: Checkout void-packages
         run: |
-          git clone https://github.com/void-linux/void-packages.git void-packages
+          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
           cd void-packages
           git checkout --detach master
 
@@ -270,14 +270,14 @@ jobs:
 
       - name: Checkout this repo
         run: |
-          git clone --depth 1 "https://github.com/${{ github.repository }}.git" extra
+          git clone "https://github.com/${{ github.repository }}.git" extra
           cd extra
           git fetch --no-tags origin "${{ github.sha }}" --depth 1
           git checkout --detach "${{ github.sha }}"
 
       - name: Checkout void-packages
         run: |
-          git clone https://github.com/void-linux/void-packages.git void-packages
+          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
           cd void-packages
           git checkout --detach master
 
