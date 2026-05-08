@@ -12,6 +12,15 @@ A collection of template files for building packages on Void Linux.
 If you dont wish to build the packages locally, https://repo.osowoso.org repository provides prebuilt binaries.  
 Pick your architecture there and you will see README.
 
+## Structure
+- Main repository with templates on Codeberg https://codeberg.org/oSoWoSo/Void_Community_Repository
+- mirror Github repository + CI https://github.com/oSoWoSo/Void_Community_Repository (Here we build binary packages)
+- Binary repository https://repos.osowoso.org/
+
+## How to use
+in https://repos.osowoso.org/<architecture> are easy to understand READMEs  
+Just pick your architecture
+
 ## Available packages
 | package | version | homepage | maintainer | notes |
 |:--------|:--------|:---------|:-----------|:------|
