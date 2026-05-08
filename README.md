@@ -13,7 +13,7 @@ If you dont wish to build the packages locally, https://repo.osowoso.org reposit
 Pick your architecture there and you will see README.
 
 ## Structure
-- Main repository with templates on Codeberg https://codeberg.org/oSoWoSo/Void_Community_Repository
+- Main repository with templates on Codeberg https://codeberg.org/oSoWoSo/oco
 - mirror Github repository + CI https://github.com/oSoWoSo/Void_Community_Repository (Here we build binary packages)
 - Binary repository https://repo.osowoso.org/
 
@@ -24,7 +24,7 @@ Just pick your architecture
 
 ## How to contribute
 Clone Codeberg repo  
-`git clone https://codeberg.org/oSoWoSo/Void_Community_Repository`  
+`git clone https://codeberg.org/oSoWoSo/oco`  
 
 Add your changes
 - When you change any shlib from upstream void-packages, changes my be reflected in `shlibs_remove` and `shlibe_append`
