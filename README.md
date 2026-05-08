@@ -1,5 +1,17 @@
-# Currently in TESTING mode
+# vOid Community repOsitory
+Currently in TESTING mode  
 Don't depend on it yet. PRs welcome 🤗
+- Void User Repository
+- VUR
+- testing repo
+- waiting list
+- void unstable
+- by community
+- for community
+
+Provides:
+- templates
+- binaries
 
 ## DISCLAIMER
 
@@ -31,6 +43,11 @@ Add your changes
 - When you add new shlib add it to `shlibe_append`
 
 Create PR
+
+## Void official documentation
+- [Manual](https://github.com/void-linux/void-packages/blob/master/Manual.md)
+- [Contributing](https://github.com/void-linux/void-packages/blob/master/CONTRIBUTING.md)
+- [Readme](https://github.com/void-linux/void-packages/blob/master/README.md)
 
 ## Available templates (packages when builded sucesfully)
 | package | version | homepage | maintainer | notes |
