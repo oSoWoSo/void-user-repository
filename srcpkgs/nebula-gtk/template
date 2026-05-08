@@ -1,15 +1,15 @@
 # Template file for 'nebula-gtk'
 pkgname=nebula-gtk
 version=1.3.7
-revision=1
+revision=2
 build_style=cargo
 hostmakedepends="pkg-config desktop-file-utils appstream-glib glib-devel libadwaita-devel gtk4-devel"
 makedepends="gtk4-devel libadwaita-devel"
 short_desc="GTK frontend for Void Linux's XBPS tooling"
-maintainer="Letdown2491 <github.penknife946@passmail.net>"
+maintainer="zenobit <zenobit@disroot.org>"
 license="MIT"
 homepage="https://github.com/Letdown2491/nebula-gtk"
-changelog="https://raw.githubusercontent.com/Letdown2491/nebula-gtk/571b1ebed71307a7ad52120d113ff15f332f65b5/CHANGELOG.md"i
+changelog="https://raw.githubusercontent.com/Letdown2491/nebula-gtk/refs/heads/main/CHANGELOG.md"
 distfiles="https://github.com/Letdown2491/nebula-gtk/archive/refs/tags/v${version}.tar.gz"
 checksum=f15c55a486f23d16146e701f43d5406927d0ec559fd3efe2adc61c0f42576b14
 
