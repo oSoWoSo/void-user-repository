@@ -18,6 +18,7 @@
 !/.gitmodules
 !/create-web
 !/LICENSE
+!/update-readme
 !/README.md
 !/shlibs_append
 !/shlibs_remove

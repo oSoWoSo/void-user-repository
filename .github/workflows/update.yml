@@ -64,26 +64,7 @@ jobs:
           echo "==> Build: $COMBINED"
 
       - name: Update README
-        run: |
-          sed -i '/## Available packages/,$!w temp.md' README.md
-          sed -i '/## The `vay` script/,$w end.md' README.md
-          echo "## Available packages" >> temp.md
-          echo "| package | version | homepage | maintainer | notes |" >> temp.md
-          echo "|:--------|:--------|:---------|:-----------|:------|" >> temp.md
-          while IFS= read -r line; do
-            package=$line
-            template_file="srcpkgs/$line/template"
-            if [ -f "$template_file" ]; then
-              homepage=$(grep '^homepage=' "$template_file" | cut -d '=' -f2 | cut -d'"' -f2)
-              version=$(grep '^version=' "$template_file" | cut -d '=' -f2)
-              maintainer=$(grep '^maintainer=' "$template_file" | cut -d '=' -f2 | cut -d' ' -f1 | cut -d'"' -f2)
-              notes=$(grep '^archs=' "$template_file" | cut -d'=' -f2 | cut -d'"' -f2)
-              echo "| $package | $version | $homepage | $maintainer | $notes |" >> temp.md
-            fi
-          done < .github/templatesList
-          cat end.md >> temp.md
-          mv temp.md README.md
-          rm end.md
+        run: ./update-readme
 
       - name: Update build workflow
         run: |

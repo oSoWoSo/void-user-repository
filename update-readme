@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# Update the Available packages table in README.md from srcpkgs/*/template files
+#
+# Usage: ./update-readme [--templates-list <file>] [--readme <file>]
+#
+# Author: zenobit <zen@duck.com>
+# License: MIT
+#
+
+set -e
+
+TEMPLATES_LIST=".github/templatesList"
+README="README.md"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --templates-list) TEMPLATES_LIST="$2"; shift 2 ;;
+        --readme)         README="$2";          shift 2 ;;
+        *) echo "Unknown option: $1" >&2; exit 1 ;;
+    esac
+done
+
+if [ ! -f "$TEMPLATES_LIST" ]; then
+    echo "ERROR: templates list not found: $TEMPLATES_LIST" >&2
+    exit 1
+fi
+
+if [ ! -f "$README" ]; then
+    echo "ERROR: README not found: $README" >&2
+    exit 1
+fi
+
+tmp=$(mktemp)
+
+awk '/^## Available/{exit} {print}' "$README" > "$tmp"
+
+{
+    echo "## Available templates (packages when built successfully)"
+    echo "| package | version | homepage | maintainer | notes |"
+    echo "|:--------|:--------|:---------|:-----------|:------|"
+    while IFS= read -r pkg; do
+        tpl="srcpkgs/$pkg/template"
+        [ -f "$tpl" ] || continue
+        homepage=$(grep '^homepage='   "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+        version=$(grep  '^version='    "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+        maintainer=$(grep '^maintainer=' "$tpl" | head -1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
+        notes=$(grep    '^archs='      "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+        echo "| $pkg | $version | $homepage | $maintainer | $notes |"
+    done < "$TEMPLATES_LIST"
+    echo ""
+    echo "Binary repository hosted thanks to [OScloud](https://OScloud.cz)"
+} >> "$tmp"
+
+mv "$tmp" "$README"
+echo "README updated: $README"
