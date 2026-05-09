@@ -21,12 +21,13 @@ jobs:
           token: ${{ secrets.WORKFLOWS }}
           fetch-depth: 2  # shallow clone
 
-      - name: Update templatesList and detect changes
+      - name: Update templatesList and README
+        run: ./update-readme
+
+      - name: Detect changes
         id: detect
         run: |
           set -e
-          find srcpkgs -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf "%f\n" \
-            | sort > .github/templatesList
           if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
             echo "==> First commit"
             ADDED=$(cat .github/templatesList)
@@ -62,9 +63,6 @@ jobs:
           echo "==> M: $MODIFIED_LIST"
           echo "==> D: $REMOVED_LIST"
           echo "==> Build: $COMBINED"
-
-      - name: Update README
-        run: ./update-readme
 
       - name: Update build workflow
         run: |

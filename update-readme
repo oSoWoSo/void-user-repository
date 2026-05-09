@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
 #
-# Update the Available packages table in README.md from srcpkgs/*/template files
+# Discover templates from srcpkgs/, update templatesList if needed, update README.md
 #
-# Usage: ./update-readme [--templates-list <file>] [--readme <file>]
+# Usage: ./update-readme [--srcpkgs <dir>] [--templates-list <file>] [--readme <file>]
 #
 # Author: zenobit <zen@duck.com>
-# License: MIT
+# License: GPL-3.0-only
 #
 
 set -e
 
+SRCPKGS="srcpkgs"
 TEMPLATES_LIST=".github/templatesList"
 README="README.md"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --templates-list) TEMPLATES_LIST="$2"; shift 2 ;;
-        --readme)         README="$2";          shift 2 ;;
+        --srcpkgs)        SRCPKGS="$2";         shift 2 ;;
+        --templates-list) TEMPLATES_LIST="$2";   shift 2 ;;
+        --readme)         README="$2";            shift 2 ;;
         *) echo "Unknown option: $1" >&2; exit 1 ;;
     esac
 done
 
-if [ ! -f "$TEMPLATES_LIST" ]; then
-    echo "ERROR: templates list not found: $TEMPLATES_LIST" >&2
+if [ ! -d "$SRCPKGS" ]; then
+    echo "ERROR: srcpkgs directory not found: $SRCPKGS" >&2
     exit 1
 fi
 
@@ -31,6 +33,19 @@ if [ ! -f "$README" ]; then
     exit 1
 fi
 
+# Step 1: discover packages
+new_list=$(find "$SRCPKGS" -mindepth 1 -maxdepth 1 \( -type d -o -type l \) -printf "%f\n" | sort)
+
+# Step 2: update templatesList if changed
+mkdir -p "$(dirname "$TEMPLATES_LIST")"
+if [ -f "$TEMPLATES_LIST" ] && [ "$new_list" = "$(cat "$TEMPLATES_LIST")" ]; then
+    echo "templatesList: no changes"
+else
+    echo "$new_list" > "$TEMPLATES_LIST"
+    echo "templatesList: updated"
+fi
+
+# Step 3: update README table
 tmp=$(mktemp)
 
 awk '/^## Available/{exit} {print}' "$README" > "$tmp"
@@ -40,12 +55,12 @@ awk '/^## Available/{exit} {print}' "$README" > "$tmp"
     echo "| package | version | homepage | maintainer | notes |"
     echo "|:--------|:--------|:---------|:-----------|:------|"
     while IFS= read -r pkg; do
-        tpl="srcpkgs/$pkg/template"
+        tpl="$SRCPKGS/$pkg/template"
         [ -f "$tpl" ] || continue
-        homepage=$(grep '^homepage='   "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
-        version=$(grep  '^version='    "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+        homepage=$(grep '^homepage='    "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+        version=$(grep  '^version='     "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
         maintainer=$(grep '^maintainer=' "$tpl" | head -1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
-        notes=$(grep    '^archs='      "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+        notes=$(grep    '^archs='       "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
         echo "| $pkg | $version | $homepage | $maintainer | $notes |"
     done < "$TEMPLATES_LIST"
     echo ""
