@@ -1,4 +1,3 @@
-Vish
 aquamarine
 brow6el
 btrfs-progs
@@ -27,6 +26,7 @@ cosmic-settings
 cosmic-settings-daemon
 cosmic-term
 cosmic-theme-editor
+cosmic-tweaks
 cosmic-wallpapers
 cosmic-workspaces-epoch
 desktop-tui
@@ -34,6 +34,7 @@ drako
 gh-lazy
 glaze
 gofer
+graphite-gtk-theme
 hyprcursor
 hyprdynamicmonitors
 hyprgraphics
@@ -60,16 +61,17 @@ linuxcommandlibrary
 lunasvg
 ly
 menu-themes
+mesa-amber
 nebula-gtk
 pop-fonts
 pop-icons
 pop-launcher
 pop-sounds-theme
-python3-PyGithub
 python3-anysqlite
 python3-hishel
 python3-inline-snapshot
 python3-linkify-it-py
+python3-PyGithub
 python3-textual
 python3-uc-micro-py
 quickemu
@@ -80,6 +82,7 @@ shattered-pixel-dungeon
 tdf
 tomlplusplus
 vbm
+Vish
 vtm
 xdg-desktop-portal-cosmic
 xdg-desktop-portal-hyprland
