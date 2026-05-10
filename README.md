@@ -1,4 +1,3 @@
-# vOid Community repOsitory
 Currently in TESTING mode  
 Don't depend on it yet. PRs welcome 🤗
 - Void User Repository
@@ -146,5 +145,3 @@ Create PR
 | zen-browser-aarch64-bin | 1.19.11b | https://github.com/zen-browser/desktop | Bella Wagner | aarch64 |
 | zen-browser-bin | 1.19.11b | https://github.com/zen-browser/desktop | Bella Wagner | x86_64 |
 | zig | 0.16.0 | https://ziglang.org | Bella Viola Wagner | x86_64* aarch64* |
-
-Binary repository hosted thanks to [OScloud](https://OScloud.cz)

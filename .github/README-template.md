@@ -22,7 +22,6 @@ sudo xbps-install <package-name>
 
 ## Note
 
-- This repository uses Git LFS for storing binary packages
 - Old package versions are automatically replaced with newer ones
-- This repository is automatically built and updated by GitHub Actions
-- Templates are in https://github.com/oSoWoSo/Void_Community_Repository
+- Binary repository is automatically built and updated by GitHub Actions in https://github.com/oSoWoSo/Void_Community_Repository
+- Templates are in https://codeberg.org/osowoso/oco
