@@ -100,20 +100,34 @@ jobs:
 
           git fetch origin page --depth=1 2>/dev/null || true
 
+          upload_if_changed() {
+            local src="$1" dest="$2" page_path="$3"
+            local old new
+            old=$(git show origin/page:"$page_path" 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
+            new=$(sha256sum < "$src" | cut -d' ' -f1)
+            if [[ "$old" != "$new" ]]; then
+              echo "  Uploading (changed): $page_path"
+              curl -s -T "$src" "${WEBDAV}/${dest}" -u ":${SURFER_TOKEN}" \
+                || echo "  Warning: failed to upload $page_path"
+            else
+              echo "  Skipped (unchanged): $page_path"
+            fi
+          }
+
           echo "==> Uploading changed website assets to Surfer"
           for file in docs/*; do
             [[ -f $file ]] || continue
             fname=$(basename "$file")
-            old=$(git show origin/page:"$fname" 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
-            new=$(sha256sum < "$file" | cut -d' ' -f1)
-            if [[ "$old" != "$new" ]]; then
-              echo "  Uploading (changed): $fname"
-              curl -s -T "$file" "${WEBDAV}/${fname}" -u ":${SURFER_TOKEN}" \
-                || echo "  Warning: failed to upload $fname"
-            else
-              echo "  Skipped (unchanged): $fname"
-            fi
+            upload_if_changed "$file" "$fname" "$fname"
           done
+
+          echo "==> Uploading changed arch pages to Surfer"
+          for arch in x86_64 x86_64-musl aarch64 aarch64-musl; do
+            [[ -f "docs/$arch/index.html" ]] || continue
+            curl -s -X MKCOL "${WEBDAV}/${arch}/" -u ":${SURFER_TOKEN}" || true
+            upload_if_changed "docs/$arch/index.html" "${arch}/index.html" "${arch}/index.html"
+          done
+
           echo "==> Done: https://repo.osowoso.org/"
 
       - name: Deploy website to page branch

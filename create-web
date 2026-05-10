@@ -333,7 +333,7 @@ _build_nav() {
 
 _build_main_index() {
 	local title="${1:-Void Community Repository}"
-	local -a arch_names=("x86_64-glibc" "x86_64-musl" "aarch64-glibc" "aarch64-musl")
+	local -a arch_names=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
 
 	local nav_arch_tmp readme_tmp svg_tmp
 	nav_arch_tmp=$(mktemp)
@@ -467,11 +467,11 @@ _pkg_matches_arch() {
 
 # Target: arch_pages
 target_arch_pages() { ## Generate per-architecture index.html pages in docs/
-	[[ -d docs ]] || _re "docs/ not found — run 'build' first"
+	mkdir -p docs
 	[[ -d srcpkgs ]] || _re "srcpkgs/ not found"
 	[[ -f .github/arch-index-template.html ]] || _re ".github/arch-index-template.html not found"
 
-	local -a arch_names=("x86_64-glibc" "x86_64-musl" "aarch64-glibc" "aarch64-musl")
+	local -a arch_names=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
 	local -a arch_targets=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
 	local -a arch_repo_targets=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
 
