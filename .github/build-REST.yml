@@ -372,4 +372,3 @@ jobs:
           export PATH="/opt/xbps/usr/bin/:$PATH"
           "${GITHUB_WORKSPACE}/extra/surfer-upload"
           echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
-
