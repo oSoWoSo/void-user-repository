@@ -371,5 +371,5 @@ jobs:
         run: |
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          extra/surfer-upload
+          "${GITHUB_WORKSPACE}/extra/surfer-upload"
           echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
