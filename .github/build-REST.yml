@@ -367,9 +367,9 @@ jobs:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
           REMOVED: ${{ needs.detect.outputs.removed }}
-          GIT_CI_URL: https://github.com/${{ github.repository }}
         run: |
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
           "${GITHUB_WORKSPACE}/extra/surfer-upload"
           echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+
