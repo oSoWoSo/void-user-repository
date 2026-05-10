@@ -5,7 +5,7 @@
 #
 # Author: zenobit <zenobit@disroot.org>
 # Date: February 14, 2026
-# License: MIT
+# License: GPL-3.0-only
 #
 
 count=$(find ./ -name '*.md' | wc -l)

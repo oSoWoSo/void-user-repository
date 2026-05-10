@@ -3,7 +3,6 @@
 
 # Website sources
 !/src
-!/docs
 
 # Templates
 !/srcpkgs
@@ -18,6 +17,7 @@
 !/.gitignore
 !/.gitmodules
 !/create-web
+!/surfer-upload
 !/LICENSE
 !/update-readme
 !/README.md
