@@ -1,3 +1,4 @@
+Vish
 aquamarine
 brow6el
 btrfs-progs
@@ -35,7 +36,6 @@ forgejo-runner
 gh-lazy
 glaze
 gofer
-graphite-gtk-theme
 hyprcursor
 hyprdynamicmonitors
 hyprgraphics
@@ -80,6 +80,7 @@ pop-fonts
 pop-icons
 pop-launcher
 pop-sounds-theme
+python3-PyGithub
 python3-anysqlite
 python3-dasbus
 python3-geographiclib
@@ -87,7 +88,6 @@ python3-geopy
 python3-hishel
 python3-inline-snapshot
 python3-linkify-it-py
-python3-PyGithub
 python3-textual
 python3-uc-micro-py
 quickemu
@@ -100,7 +100,6 @@ tdf
 tomlplusplus
 undelete-btrfs
 vbm
-Vish
 vtm
 xdg-desktop-portal-cosmic
 xdg-desktop-portal-hyprland
