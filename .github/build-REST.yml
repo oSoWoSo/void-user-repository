@@ -1,3 +1,6 @@
+# Apply changes in .github/build-REST.yml instead
+# .github/worlfkows/build.yml will be generated from build-REST.yml by CI
+
 permissions:
   contents: write
   pull-requests: read
@@ -280,6 +283,7 @@ jobs:
           chown -R builder:builder /void-packages/srcpkgs /void-packages/common
 
       - name: Build packages
+        id: build
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           cd /void-packages
@@ -322,6 +326,7 @@ jobs:
           echo "$PKGS"
           echo
 
+          BUILT=false
           for pkg in ${PKGS}; do
             if ! pkg_arch_ok "$pkg" "${ARCH}"; then
               echo "==> Skipping ${pkg}: not available for ${ARCH}"
@@ -337,10 +342,13 @@ jobs:
             fi
             echo "==> Building ${pkg}"
             sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
+            BUILT=true
             echo
           done
+          echo "built=${BUILT}" >> "$GITHUB_OUTPUT"
 
       - name: Sign packages
+        if: steps.build.outputs.built == 'true'
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.config.arch }}
@@ -349,11 +357,6 @@ jobs:
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
-
-          if ! ls *.xbps 1>/dev/null 2>&1; then
-            echo "⚠️ No packages to sign"
-            exit 0
-          fi
 
           echo "==> Merging free + nonfree"
           if [ -d "nonfree" ]; then
@@ -371,6 +374,7 @@ jobs:
           rm -f private.pem
 
       - name: Upload
+        if: steps.build.outputs.built == 'true'
         working-directory: /void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}
