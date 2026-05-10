@@ -91,6 +91,7 @@ python3-PyGithub
 python3-textual
 python3-uc-micro-py
 quickemu
+quickosdl
 rgc
 runkit
 sdbus-cpp

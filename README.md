@@ -145,6 +145,7 @@ Create PR
 | python3-textual | 5.3.0 | https://textual.textualize.io | icp |  |
 | python3-uc-micro-py | 2.0.0 | https://github.com/tsutsu3/uc.micro-py | Orphaned |  |
 | quickemu | 4.9.9 | https://github.com/quickemu-project/quickemu | zenobit |  |
+| quickosdl | 0.3.2 | https://github.com/lj3954/quickosdl | zenobit |  |
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
