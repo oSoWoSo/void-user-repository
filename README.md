@@ -53,7 +53,6 @@ Create PR
 ## Available templates (packages when built successfully)
 | package | version | homepage | maintainer | notes |
 |:--------|:--------|:---------|:-----------|:------|
-| Vish | 1.1.2 | https://github.com/Lluciocc/Vish | zenobit |  |
 | aquamarine | 0.9.5 | https://github.com/hyprwm/aquamarine | zenobit |  |
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit |  |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno Boland |  |
@@ -135,7 +134,6 @@ Create PR
 | pop-icons | 3.5.1 | https://github.com/pop-os/icon-theme | Bella Wagner |  |
 | pop-launcher | 1.2.7 | https://github.com/pop-os/launcher | Bella Wagner | x86_64* i686 |
 | pop-sounds-theme | 5.5.1 | https://github.com/pop-os/gtk-theme | Bella Wagner |  |
-| python3-PyGithub | 2.8.1 | https://pygithub.readthedocs.io/ | Orphan |  |
 | python3-anysqlite | 0.0.5 | https://github.com/karpetrosyan/anysqlite | zenobit |  |
 | python3-dasbus | 1.7 | https://github.com/dasbus-project/dasbus | zenobit |  |
 | python3-geographiclib | 2.1 | https://geographiclib.sourceforge.io/ | zenobit |  |
@@ -143,6 +141,7 @@ Create PR
 | python3-hishel | 1.1.9 | https://github.com/karpetrosyan/hishel | zenobit |  |
 | python3-inline-snapshot | 0.32.6 | https://15r10nk.github.io/inline-snapshot/latest | zenobit |  |
 | python3-linkify-it-py | 2.1.0 | https://github.com/tsutsu3/linkify-it-py | Orphaned |  |
+| python3-PyGithub | 2.8.1 | https://pygithub.readthedocs.io/ | Orphan |  |
 | python3-textual | 5.3.0 | https://textual.textualize.io | icp |  |
 | python3-uc-micro-py | 2.0.0 | https://github.com/tsutsu3/uc.micro-py | Orphaned |  |
 | quickemu | 4.9.9 | https://github.com/quickemu-project/quickemu | zenobit |  |
@@ -155,6 +154,7 @@ Create PR
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | undelete-btrfs | 1.0 | https://github.com/danthem/undelete-btrfs | zenobit |  |
 | vbm | 1.0.1 | https://codeberg.org/oSoWoSo/vbm | zenobit |  |
+| Vish | 1.1.2 | https://github.com/Lluciocc/Vish | zenobit |  |
 | vtm | 2026.05.01 | https://github.com/directvt/vtm | zenobit |  |
 | xdg-desktop-portal-cosmic | 1.0.12 | https://github.com/pop-os/xdg-desktop-portal-cosmic | Bella Wagner | x86_64* |
 | xdg-desktop-portal-hyprland | 1.3.11 | https://github.com/hyprwm/xdg-desktop-portal-hyprland | zenobit |  |

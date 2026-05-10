@@ -55,12 +55,10 @@ on:
         - cosmic-settings-daemon
         - cosmic-term
         - cosmic-theme-editor
-        - cosmic-tweaks
         - cosmic-wallpapers
         - cosmic-workspaces-epoch
         - desktop-tui
         - drako
-        - forgejo-runner
         - gh-lazy
         - glaze
         - gofer
@@ -90,43 +88,25 @@ on:
         - lunasvg
         - ly
         - menu-themes
-        - mesa-amber
         - nebula-gtk
-        - nwg-clipman
-        - nwg-displays
-        - nwg-dock
-        - nwg-drawer
-        - nwg-hello
-        - nwg-icon-picker
-        - nwg-menu
-        - nwg-panel
-        - nwg-readme-browser
-        - nwg-shell
-        - nwg-shell-config
-        - nwg-shell-wallpapers
         - pop-fonts
         - pop-icons
         - pop-launcher
         - pop-sounds-theme
         - python3-PyGithub
         - python3-anysqlite
-        - python3-dasbus
-        - python3-geographiclib
-        - python3-geopy
         - python3-hishel
         - python3-inline-snapshot
         - python3-linkify-it-py
         - python3-textual
         - python3-uc-micro-py
         - quickemu
-        - quickosdl
         - rgc
         - runkit
         - sdbus-cpp
         - shattered-pixel-dungeon
         - tdf
         - tomlplusplus
-        - undelete-btrfs
         - vbm
         - vtm
         - xdg-desktop-portal-cosmic
@@ -246,7 +226,7 @@ jobs:
     if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
     runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/osowoso/oco-builder-${{ matrix.config.host }}:latest
+      image: ghcr.io/${{ github.repository_owner }}/void-bootstrap-${{ matrix.config.host }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -274,6 +254,11 @@ jobs:
           cd extra
           git fetch --no-tags origin "${{ github.event.pull_request.head.sha }}" --depth 1
           git checkout --detach "${{ github.event.pull_request.head.sha }}"
+
+      - name: Update void-packages
+        run: |
+          sudo -Eu builder git -C /void-packages pull --ff-only
+          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
 
       - name: Merge templates and edit shlibs
         run: |
@@ -376,7 +361,7 @@ jobs:
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
     runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/osowoso/oco-builder-${{ matrix.config.host }}:latest
+      image: ghcr.io/${{ github.repository_owner }}/void-bootstrap-${{ matrix.config.host }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -404,6 +389,11 @@ jobs:
           cd extra
           git fetch --no-tags origin "${{ github.sha }}" --depth 1
           git checkout --detach "${{ github.sha }}"
+
+      - name: Update void-packages
+        run: |
+          sudo -Eu builder git -C /void-packages pull --ff-only
+          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
 
       - name: Merge templates and edit shlibs
         run: |
@@ -508,7 +498,7 @@ jobs:
           echo "==> Cleaning up private key"
           rm -f private.pem
 
-      - name: Upload
+      - name: Upload to Surfer
         working-directory: /void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}
