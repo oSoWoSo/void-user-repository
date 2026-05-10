@@ -136,6 +136,7 @@ Create PR
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
+| undelete-btrfs | 1.0 | https://github.com/danthem/undelete-btrfs | zenobit |  |
 | vbm | 1.0.1 | https://codeberg.org/oSoWoSo/vbm | zenobit |  |
 | Vish | 1.1.2 | https://github.com/Lluciocc/Vish | zenobit |  |
 | vtm | 2026.05.01 | https://github.com/directvt/vtm | zenobit |  |
