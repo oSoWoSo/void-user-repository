@@ -3,6 +3,7 @@
 
 # Website sources
 !/src
+!/docs
 
 # Templates
 !/srcpkgs

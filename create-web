@@ -3,7 +3,7 @@
 #
 # Make website from .md files
 #
-# Author: zenobit <zen@duck.com>
+# Author: zenobit <zenobit@disroot.org>
 # Date: February 14, 2026
 # License: MIT
 #
@@ -11,7 +11,7 @@
 count=$(find ./ -name '*.md' | wc -l)
 
 # Functions for colored bordered messages (gum) or ANSI colored messages
-if command -v gum -v >/dev/null; then
+if command -v gum >/dev/null 2>&1; then
 	_r() {
 		gum style --border rounded --border-foreground "#e50203" --padding "0 1" "${@}"
 	}
@@ -55,50 +55,57 @@ if command -v gum -v >/dev/null; then
 		echo "$red"
 	}
 else
-	RED='\033[0;31m'
-	GREEN='\033[0;32m'
-	YELLOW='\033[1;33m'
-	BLUE='\033[0;34m'
-	#CYAN='\033[0;36m'
-	NC='\033[0m'
+	if [[ -z $NO_COLOR ]]; then
+		RED=$'\e[0;31m'
+		GREEN=$'\e[0;32m'
+		YELLOW=$'\e[1;33m'
+		BLUE=$'\e[0;34m'
+		NC=$'\e[0m'
+	else
+		RED=
+		GREEN=
+		YELLOW=
+		BLUE=
+		NC=
+	fi
 
 	_g() {
-		echo -e "${GREEN}${1}${NC}"
+		echo "${GREEN}${1}${NC}"
 	}
 
 	_r() {
-		echo -e "${RED}${1}${NC}"
+		echo "${RED}${1}${NC}"
 	}
 
 	_re() {
-		echo -e "${RED}${1}${NC}" >&2
+		echo "${RED}${1}${NC}" >&2
 		exit 1
 	}
 
 	_b() {
-		echo -e "${BLUE}${1}${NC}"
+		echo "${BLUE}${1}${NC}"
 	}
 
 	_y() {
-		echo -e "${YELLOW}${1}${NC}"
+		echo "${YELLOW}${1}${NC}"
 	}
 
 	ask() {
 		_y "Press Enter to continue
 anything else for Quit..."
 		echo "$1"
-		read -n 1 -s key
-		if [[ ! $key == '' ]]; then
+		read -r -n 1 -s key
+		if [[ -n $key ]]; then
 			exit 1
 		fi
 	}
 
 	_header() {
-		echo -e "\n${RED}${1}${NC}\n"
+		echo "${RED}${1}${NC}"
 	}
 
 	_footer() {
-		echo -e "\n${RED}${1}${NC}\n"
+		echo "${RED}${1}${NC}"
 	}
 fi
 export -f _r _re _g _b _y
@@ -129,11 +136,33 @@ _detect_repo() {
 		return
 	fi
 
+	# Manual override: set GIT_REPO_URL in .env to skip auto-detection
+	if [[ -n ${GIT_REPO_URL:-} ]]; then
+		_b "Using GIT_REPO_URL override: $GIT_REPO_URL"
+		REPO_URL="$GIT_REPO_URL"
+		if [[ "$REPO_URL" =~ github\.com ]]; then
+			REPO_PLATFORM="github"
+			REPO_ZIP_URL="${REPO_URL}/archive/refs/heads/main.zip"
+			REPO_RELEASE_URL="${REPO_URL}/releases/latest"
+		elif [[ "$REPO_URL" =~ gitlab\.com ]]; then
+			REPO_PLATFORM="gitlab"
+			local proj_path
+			proj_path=$(echo "$REPO_URL" | sed 's|https://gitlab\.com/||')
+			REPO_ZIP_URL="https://gitlab.com/${proj_path}/-/archive/main/${proj_path##*/}-main.zip"
+			REPO_RELEASE_URL="${REPO_URL}/-/releases"
+		else
+			REPO_PLATFORM="other"
+			REPO_ZIP_URL="" REPO_RELEASE_URL=""
+		fi
+		_check_release
+		return
+	fi
+
 	# Always use the main remote repository
 	local raw
 	raw=$(git remote get-url "$(git remote | head -n 1)" 2>/dev/null)
 
-	if [ -z "$raw" ]; then
+	if [[ -z $raw ]]; then
 		_r "No git remote found — repo buttons will be disabled"
 		REPO_URL="" REPO_PLATFORM="" REPO_ZIP_URL="" REPO_RELEASE_URL=""
 		return
@@ -172,7 +201,7 @@ _detect_repo() {
 		# Gitea/Forgejo: use FORGE_URL override or auto-detect via API probe
 		local forge_base="${FORGE_URL:-}"
 
-		if [ -n "$forge_base" ]; then
+		if [[ -n $forge_base ]]; then
 			_b "FORGE_URL override: $forge_base"
 			REPO_PLATFORM="gitea"
 		elif _is_gitea "$base_url"; then
@@ -203,7 +232,7 @@ _detect_repo() {
 _check_release() {
 	REPO_HAS_RELEASE=0
 
-	[ -z "$REPO_URL" ] && return
+	[[ -z $REPO_URL ]] && return
 
 	local base_url slug http_code body
 	base_url=$(echo "$REPO_URL" | grep -oP 'https?://[^/]+')
@@ -215,27 +244,27 @@ _check_release() {
 				-H "Accept: application/vnd.github+json" \
 				"https://api.github.com/repos/${slug}/releases/latest" 2>/dev/null)
 			# 200 = release exists, 404 = no releases
-			[ "$http_code" = "200" ] && REPO_HAS_RELEASE=1
+			[[ $http_code == 200 ]] && REPO_HAS_RELEASE=1
 			;;
 		gitlab)
 			local encoded_slug
 			encoded_slug=$(echo "$slug" | sed 's|/|%2F|g')
 			body=$(curl -sf \
 				"https://gitlab.com/api/v4/projects/${encoded_slug}/releases?per_page=1" 2>/dev/null)
-			[ -n "$body" ] && [ "$body" != "[]" ] && REPO_HAS_RELEASE=1
+			[[ -n $body && $body != '[]' ]] && REPO_HAS_RELEASE=1
 			;;
 		gitea)
 			# Gitea/Forgejo: GET /api/v1/repos/{owner}/{repo}/releases?limit=1
 			body=$(curl -sf --max-time 5 \
 				"${base_url}/api/v1/repos/${slug}/releases?limit=1" 2>/dev/null)
-			[ -n "$body" ] && [ "$body" != "[]" ] && [ "$body" != "null" ] && REPO_HAS_RELEASE=1
+			[[ -n $body && $body != '[]' && $body != null ]] && REPO_HAS_RELEASE=1
 			;;
 		*)
 			REPO_HAS_RELEASE=0
 			;;
 	esac
 
-	if [ "$REPO_HAS_RELEASE" = "1" ]; then
+	if [[ $REPO_HAS_RELEASE == 1 ]]; then
 		_g "Release found"
 	else
 		_y "No release found — release button will be shown as strikethrough"
@@ -266,22 +295,22 @@ _build_nav() {
 	echo '  <li><a href="https://osowoso.org">oSoWoSo</a></li>' >> "$nav_file"
 
 	# Home button
-	local home_active=""
-	[ "$current" = "index" ] && home_active=' class="active"'
+	local home_active=''
+	[[ $current == index ]] && home_active=' class="active"'
 	echo "  <li><a href=\"index.html\"${home_active}>Home</a></li>" >> "$nav_file"
 
 	# Repo buttons (only when URLs are available)
-	if [ -n "$REPO_RELEASE_URL" ]; then
-		if [ "${REPO_HAS_RELEASE:-0}" = "1" ]; then
+	if [[ -n $REPO_RELEASE_URL ]]; then
+		if [[ ${REPO_HAS_RELEASE:-0} == 1 ]]; then
 			echo "  <li><a href=\"${REPO_RELEASE_URL}\">⏬ release</a></li>" >> "$nav_file"
 		else
 			echo "  <li><a class=\"no-release\" href=\"${REPO_RELEASE_URL}\">⏬ release</a></li>" >> "$nav_file"
 		fi
 	fi
-	if [ -n "$REPO_ZIP_URL" ]; then
+	if [[ -n $REPO_ZIP_URL ]]; then
 		echo "  <li><a href=\"${REPO_ZIP_URL}\">📦repo zip</a></li>" >> "$nav_file"
 	fi
-	if [ -n "$REPO_URL" ]; then
+	if [[ -n $REPO_URL ]]; then
 		echo "  <li><a href=\"${REPO_URL}\">🔗git</a></li>" >> "$nav_file"
 	fi
 
@@ -289,76 +318,112 @@ _build_nav() {
 
 	# Other .md pages
 	for md in *.md; do
-		[ -f "$md" ] || continue
-		[ "$md" = "README.md" ] && continue
-		local name=$(echo "${md%.md}" | sed 's/_/ /g')
-		local active=""
-		[ "$name" = "$current" ] && active=' class="active"'
+		[[ -f $md ]] || continue
+		[[ $md == README.md ]] && continue
+		local name active
+		name=$(echo "${md%.md}" | sed 's/_/ /g')
+		active=''
+		[[ $name == $current ]] && active=' class="active"'
 		echo "  <li><a href=\"${name}.html\"${active}>${name}</a></li>" >> "$nav_file"
 	done
 
+	echo '  <li class="nav-toggle"><button class="theme-toggle" onclick="toggleTheme()">🌓</button></li>' >> "$nav_file"
 	echo '</ul></nav>' >> "$nav_file"
 }
 
+_build_main_index() {
+	local title="${1:-Void Community Repository}"
+	local -a arch_names=("x86_64-glibc" "x86_64-musl" "aarch64-glibc" "aarch64-musl")
+
+	local nav_arch_tmp readme_tmp svg_tmp
+	nav_arch_tmp=$(mktemp)
+	readme_tmp=$(mktemp)
+	svg_tmp=$(mktemp)
+
+	# Arch nav links (relative paths, no ../) + source link at end
+	for arch in "${arch_names[@]}"; do
+		printf '  <li><a href="%s/">%s</a></li>\n' "$arch" "$arch" >> "$nav_arch_tmp"
+	done
+	printf '  <li><a href="https://codeberg.org/osowoso/oco">&#x2934; source</a></li>\n' >> "$nav_arch_tmp"
+	if [[ -n ${REPO_URL:-} ]]; then
+		printf '  <li><a href="%s">CI</a></li>\n' "$REPO_URL" >> "$nav_arch_tmp"
+	fi
+
+	# README as HTML fragment (no -s: no full HTML wrapper)
+	pandoc README.md -f gfm > "$readme_tmp"
+
+	# SVG color script
+	cp src/svg-color.html "$svg_tmp"
+
+	# Process template: single-line subs via sed, multiline injections via awk
+	sed \
+		-e "s|__CSS_URL__|style.css|g" \
+		-e 's|__FAVICON__|<link rel="icon" href="favicon.ico" />|g' \
+		.github/main-index-template.html \
+	| awk \
+		-v nav_arch="$nav_arch_tmp" \
+		-v readme="$readme_tmp" \
+		-v svg="$svg_tmp" \
+		'/__NAV_ARCH_LINKS__/ { while ((getline ln < nav_arch) > 0) print ln; close(nav_arch); next }
+		 /__README_CONTENT__/  { while ((getline ln < readme)   > 0) print ln; close(readme);   next }
+		 /__SVGCOLOR__/        { while ((getline ln < svg)      > 0) print ln; close(svg);       next }
+		 { print }' \
+	> "docs/index.html"
+
+	rm -f "$nav_arch_tmp" "$readme_tmp" "$svg_tmp"
+	_g "Generated: docs/index.html"
+}
+
 # Target: build
-target_build() { ## Builds the website, optional: title argument
+target_build() { ## Builds the website, optional: title [--repo URL]
+	local title=""
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			--repo|-r) GIT_REPO_URL="$2"; shift 2 ;;
+			*) title="$1"; shift ;;
+		esac
+	done
+
 	_detect_repo
 
-	if [ -z "$1" ]; then
+	if [[ -z $title ]]; then
 		_r "No website title provided
    using generated one!"
 		title=$(basename "$(pwd)" | sed 's/_/ /g')
-	else
-		title="$1"
 	fi
 	_g "Creating: $title"
-	if [ -f docs/CNAME ]; then
+	if [[ -f docs/CNAME ]]; then
 		cp docs/CNAME src/
 	fi
 	rm -rf docs && mkdir -p docs
 	cp -r src/* docs/
 	rm -f docs/toggle.html docs/toc.html docs/svg-color.html docs/footer.html
 
-	if [ "$count" = 1 ]; then
+	if (( count == 1 )); then
 		for file in *.md; do
-			[ -f "$file" ] || continue
-			local nav_file="docs/_nav.html"
-			_build_nav "index" "$nav_file"
-			echo "Processing: $file → index.html"
-			# single file
-			pandoc "$file" -f gfm -s \
-				--css=style.css \
-				--toc \
-				--toc-depth=3 \
-				--include-before-body=src/toggle.html \
-				--include-before-body=src/toc.html \
-				--include-before-body="$nav_file" \
-				--include-after-body=src/footer.html \
-				--include-after-body=src/svg-color.html \
-				--metadata title="$title" \
-				-o docs/index.html
-			rm -f "$nav_file"
+			[[ -f $file ]] || continue
+			echo "Processing: $file → docs/index.html"
+			_build_main_index "$title"
 		done
 
-	elif [ "$count" -gt 1 ]; then
+	elif (( count > 1 )); then
 		for file in *.md; do
-			[ -f "$file" ] || continue
+			[[ -f $file ]] || continue
 
-			if [ "$file" = "README.md" ]; then
-				output="docs/index.html"
-				meta_title="$title"
-				current="index"
-			else
-				output="docs/${file%.md}.html"
-				meta_title=$(echo "${file%.md}" | sed 's/_/ /g')
-				current="${file%.md}"
+			if [[ $file == README.md ]]; then
+				echo "Processing: README.md → docs/index.html"
+				_build_main_index "$title"
+				continue
 			fi
 
-			local nav_file="docs/_nav_${current}.html"
+			local output nav_file meta_title current
+			output="docs/${file%.md}.html"
+			meta_title=$(echo "${file%.md}" | sed 's/_/ /g')
+			current="${file%.md}"
+			nav_file="docs/_nav_${current}.html"
 			_build_nav "$current" "$nav_file"
 
 			echo "Processing: $file → $output"
-			# multi file
 			pandoc "$file" -f gfm -s \
 				--css=style.css \
 				--toc \
@@ -386,25 +451,25 @@ target_build() { ## Builds the website, optional: title argument
 _pkg_matches_arch() {
 	local archs_str="${1//\"/}"
 	local target="$2"
-	[ -z "$archs_str" ] && return 0
+	[[ -z $archs_str ]] && return 0
 	local has_pos=0 matched=0
 	for pat in $archs_str; do
-		if [[ "$pat" == ~* ]]; then
-			[[ "$target" == ${pat#~} ]] && return 1
+		if [[ $pat == ~* ]]; then
+			[[ $target == ${pat#~} ]] && return 1
 		else
 			has_pos=1
-			[[ "$target" == $pat ]] && matched=1
+			[[ $target == $pat ]] && matched=1
 		fi
 	done
-	[ "$has_pos" -eq 1 ] && { [ "$matched" -eq 1 ] && return 0 || return 1; }
+	(( has_pos )) && { (( matched )) && return 0 || return 1; }
 	return 0
 }
 
 # Target: arch_pages
 target_arch_pages() { ## Generate per-architecture index.html pages in docs/
-	[ ! -d docs ] && _re "docs/ not found — run 'build' first"
-	[ ! -d srcpkgs ] && _re "srcpkgs/ not found"
-	[ ! -f .github/arch-index-template.html ] && _re ".github/arch-index-template.html not found"
+	[[ -d docs ]] || _re "docs/ not found — run 'build' first"
+	[[ -d srcpkgs ]] || _re "srcpkgs/ not found"
+	[[ -f .github/arch-index-template.html ]] || _re ".github/arch-index-template.html not found"
 
 	local -a arch_names=("x86_64-glibc" "x86_64-musl" "aarch64-glibc" "aarch64-musl")
 	local -a arch_targets=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
@@ -425,7 +490,7 @@ target_arch_pages() { ## Generate per-architecture index.html pages in docs/
 		svg_tmp=$(mktemp)
 
 		for j in "${!arch_names[@]}"; do
-			if [ "$j" -eq "$i" ]; then
+			if (( j == i )); then
 				printf '  <li><a href="." class="active">%s</a></li>\n' "${arch_names[$j]}" >> "$nav_tmp"
 			else
 				printf '  <li><a href="../%s/">%s</a></li>\n' "${arch_names[$j]}" "${arch_names[$j]}" >> "$nav_tmp"
@@ -439,11 +504,11 @@ target_arch_pages() { ## Generate per-architecture index.html pages in docs/
 			printf '</tr></thead>\n<tbody>\n'
 			local pkg_count=0
 			for tpl in srcpkgs/*/template; do
-				[ -f "$tpl" ] || continue
+				[[ -f $tpl ]] || continue
 				local dir_name pkg_name pkg_archs pkg_ver pkg_home pkg_maint pkg_desc
 				dir_name=$(basename "$(dirname "$tpl")")
 				pkg_name=$(grep "^pkgname=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
-				[ "$pkg_name" != "$dir_name" ] && continue
+				[[ $pkg_name != $dir_name ]] && continue
 				pkg_archs=$(grep "^archs=" "$tpl" | head -1 | cut -d= -f2-)
 				_pkg_matches_arch "$pkg_archs" "$target" || continue
 				pkg_ver=$(grep "^version=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
@@ -466,6 +531,7 @@ target_arch_pages() { ## Generate per-architecture index.html pages in docs/
 			-e "s|__CSS_URL__|../style.css|g" \
 			-e "s|__HOME_URL__|../index.html|g" \
 			-e "s|__REPO_URL__|${repo_url}|g" \
+			-e "s|__GIT_CI_URL__|${REPO_URL}|g" \
 			-e 's|__FAVICON__|<link rel="icon" href="../favicon.ico" />|g' \
 			.github/arch-index-template.html \
 		| awk \
@@ -504,7 +570,7 @@ target_"Name of argument aka function"() { ## Your usage message here.'
 
 # Target: serve
 target_serve() { ## Serve site locally out of docs folder
-	if [ ! -f docs/index.html ]; then
+	if [[ ! -f docs/index.html ]]; then
 		_r "Site not built!"
 		ask 'Build first?' && target_build "$@" || _re "Exiting"
 	fi

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>Void Community Repository — __ARCH__</title>
+  <title>Void Community Repository</title>
   <link rel="stylesheet" href="__CSS_URL__" />
   __FAVICON__
 </head>
@@ -23,31 +23,15 @@
 </script>
 <nav><ul>
   <li><a href="https://osowoso.org">oSoWoSo</a></li>
-  <li><a href="__HOME_URL__">Home</a></li>
+  <li><a href="index.html" class="active">Home</a></li>
 __NAV_ARCH_LINKS__
-  <li><a href="__REPO_URL__">📂 browse</a></li>
-  <li><a href="https://codeberg.org/osowoso/oco">&#x2934; source</a></li>
-  <li><a href="__GIT_CI_URL__">CI</a></li>
   <li class="nav-toggle"><button class="theme-toggle" onclick="toggleTheme()">🌓</button></li>
 </ul></nav>
 <header id="title-block-header">
 <h1 class="title">Void Community Repository</h1>
 </header>
-<h2>__ARCH__ packages</h2>
-<h3 id="add-repo">Add this repository to XBPS</h3>
-<ol>
-<li>Create the config entry:
-<pre><code>echo repository=__REPO_URL__ | sudo tee /etc/xbps.d/00-VUR.conf</code></pre>
-</li>
-<li>Sync and accept fingerprint:
-<pre><code>sudo xbps-install -S</code></pre>
-</li>
-<li>Install packages:
-<pre><code>sudo xbps-install &lt;package&gt;</code></pre>
-</li>
-</ol>
-<h3 id="packages">Available packages</h3>
-__PACKAGE_TABLE__
+<h2 id="about">About</h2>
+__README_CONTENT__
 <footer>
   <p>repo by <a href="https://osowoso.org">oSoWoSo</a> served by <a href="https://oscloud.cz">oscloud.cz</a></p>
 </footer>
