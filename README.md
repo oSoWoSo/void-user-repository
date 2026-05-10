@@ -114,7 +114,7 @@ Create PR
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
 | lunasvg | 3.5.0 | https://github.com/sammycage/lunasvg | zenobit |  |
-| ly | 1.1.2 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
+| ly | 1.4.0 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | menu-themes | 0.8.0 | https://github.com/kando-menu/menu-themes | zenobit |  |
 | mesa-amber | 21.3.9 | https://gitlab.freedesktop.org/mesa/mesa/-/blob/amber/docs/relnotes/21.3.9.rst | Bella Viola Wagner |  |
 | nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | zenobit |  |
