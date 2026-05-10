@@ -42,6 +42,8 @@ Add your changes
 - When you change any shlib from upstream void-packages, changes my be reflected in `shlibs_remove` and `shlibe_append`
 - When you add new shlib add it to `shlibe_append`
 
+After adding template, run `./update-readme` to regenerate templates list and table
+
 Create PR
 
 ## Void official documentation
