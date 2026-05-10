@@ -62,8 +62,96 @@ pkg-name() {
 	printf '%s' "${without_arch%-${ver}}"
 }
 
+# Generate arch index.html from actual xbps repodata (not templates).
+# Only packages present in the repo are shown; metadata from srcpkgs templates.
+build-arch-page() {
+	local arch="$1" work_dir="$2"
+	local out_dir="${script_dir}/docs/${arch}"
+	local out="${out_dir}/index.html"
+	local template="${script_dir}/.github/arch-index-template.html"
+	local repo_url="${SURFER_URL}/${arch}"
+
+	[[ -f $template ]] || { echo "  Warning: arch-index-template.html not found, skipping arch page"; return 1; }
+	mkdir -p "$out_dir"
+
+	local nav_tmp pkg_tmp svg_tmp
+	nav_tmp=$(mktemp); pkg_tmp=$(mktemp); svg_tmp=$(mktemp)
+	trap 'rm -f "$nav_tmp" "$pkg_tmp" "$svg_tmp"' RETURN
+
+	local arch_names=("x86_64" "x86_64-musl" "aarch64" "aarch64-musl")
+	for j in "${!arch_names[@]}"; do
+		if [[ "${arch_names[$j]}" == "$arch" ]]; then
+			printf '  <li><a href="." class="active">%s</a></li>\n' "$arch" >> "$nav_tmp"
+		else
+			printf '  <li><a href="../%s/">%s</a></li>\n' "${arch_names[$j]}" "${arch_names[$j]}" >> "$nav_tmp"
+		fi
+	done
+
+	{
+		printf '<table>\n<thead><tr>\n'
+		printf '  <th>package</th><th>version</th><th>homepage</th><th>maintainer</th><th>description</th>\n'
+		printf '</tr></thead>\n<tbody>\n'
+
+		local pkg_count=0
+		while IFS= read -r line; do
+			# xbps-query -s output: "[*] pkgver short description"
+			[[ $line =~ ^\[.\]\ ([^ ]+)\ (.+)$ ]] || continue
+			local pkgver="${BASH_REMATCH[1]}"
+			local short_desc="${BASH_REMATCH[2]}"
+
+			# Extract pkgname: strip -version_revision suffix (version starts with digit)
+			local pkgname
+			pkgname=$(printf '%s' "$pkgver" | sed 's/-[0-9].*$//')
+
+			# Only main packages (skip subpackages like libfoo-devel)
+			local tpl="${script_dir}/srcpkgs/${pkgname}/template"
+			[[ -f $tpl ]] || continue
+			local dir_pkgname
+			dir_pkgname=$(grep "^pkgname=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+			[[ $dir_pkgname == "$pkgname" ]] || continue
+
+			# Version from actual repo pkgver (strip revision suffix _N)
+			local ver="${pkgver#${pkgname}-}"
+			local version="${ver%_*}"
+
+			local homepage maintainer
+			homepage=$(grep "^homepage=" "$tpl" | head -1 | cut -d= -f2- | tr -d '"')
+			maintainer=$(grep "^maintainer=" "$tpl" | head -1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
+
+			printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td></tr>\n' \
+				"$pkgname" "$version" "$homepage" "$homepage" "$maintainer" "$short_desc"
+			pkg_count=$((pkg_count + 1))
+		done < <(XBPS_ARCH="$arch" xbps-query -r "$work_dir" -s "*" 2>/dev/null | sort)
+
+		printf '</tbody>\n</table>\n'
+	} > "$pkg_tmp"
+
+	cp "${script_dir}/src/svg-color.html" "$svg_tmp" 2>/dev/null || touch "$svg_tmp"
+
+	sed \
+		-e "s|__ARCH__|${arch}|g" \
+		-e "s|__CSS_URL__|../style.css|g" \
+		-e "s|__HOME_URL__|../index.html|g" \
+		-e "s|__REPO_URL__|${repo_url}|g" \
+		-e "s|__GIT_CI_URL__|${REPO_URL:-${SURFER_URL}}|g" \
+		-e 's|__FAVICON__|<link rel="icon" href="../favicon.ico" />|g' \
+		"$template" \
+	| awk \
+		-v nav="$nav_tmp" \
+		-v tbl="$pkg_tmp" \
+		-v svg="$svg_tmp" \
+		'/__NAV_ARCH_LINKS__/ { while ((getline ln < nav) > 0) print ln; close(nav); next }
+		 /__PACKAGE_TABLE__/  { while ((getline ln < tbl) > 0) print ln; close(tbl); next }
+		 /__SVGCOLOR__/       { while ((getline ln < svg) > 0) print ln; close(svg); next }
+		 { print }' \
+	> "$out"
+
+	echo "  Generated ($pkg_count packages): $out"
+}
+
 main() {
-	local opt OPTIND OPTARG
+	local script_dir opt OPTIND OPTARG
+	script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 	while getopts 'h' opt; do
 		case "$opt" in
 			h) usage; return 0;;
@@ -160,9 +248,9 @@ main() {
 		upload-file "$file" "${webdav}/${fname}"
 	done
 
-	# Regenerate and upload arch info page
+	# Regenerate and upload arch info page from actual repo contents
 	echo '==> Updating arch page'
-	(cd "$script_dir" && ./create-web arch_pages)
+	build-arch-page "$ARCH" "$work_dir"
 	local arch_page="${script_dir}/docs/${ARCH}/index.html"
 	if [[ -f $arch_page ]]; then
 		upload-file "$arch_page" "${webdav}/index.html"

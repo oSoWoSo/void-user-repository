@@ -76,11 +76,12 @@ jobs:
             return 1
           }
 
-          has_nocross() {
+          needs_native_aarch64() {
             for pkg in $packages; do
               local template="srcpkgs/${pkg}/template"
               [ -f "$template" ] || continue
-              grep -q '^nocross=' "$template" && return 0
+              grep -q '^nocross=' "$template" || continue
+              pkg_arch_ok "$pkg" "aarch64" && return 0
             done
             return 1
           }
@@ -96,9 +97,7 @@ jobs:
             arch_needed "aarch64"      && add_cfg "aarch64"      "x86_64"      "ubuntu-latest"    "linux/amd64" 0 false
             arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "ubuntu-latest"    "linux/amd64" 1 false
             arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
-            if arch_needed "aarch64" && has_nocross; then
-              add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
-            fi
+            needs_native_aarch64 && add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
             [ -z "$matrix_configs" ] && add_cfg "x86_64" "x86_64" "ubuntu-latest" "linux/amd64" 1 false
           fi
           echo "matrix={\"config\":[${matrix_configs}]}" >> "$GITHUB_OUTPUT"
