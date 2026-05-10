@@ -494,6 +494,7 @@ jobs:
             -e "s|__CSS_URL__|https://repos.osowoso.org/style.css|g" \
             -e "s|__HOME_URL__|https://repos.osowoso.org|g" \
             -e "s|__REPO_URL__|https://repo.osowoso.org/${ARCH}|g" \
+            -e "s|__GIT_CI_URL__|https://github.com/${{ github.repository }}|g" \
             -e "s|__FAVICON__||g" \
             -e "s|__SVGCOLOR__||g" \
             "$TEMPLATE" \
