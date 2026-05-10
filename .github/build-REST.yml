@@ -1,6 +1,7 @@
 permissions:
   contents: write
   pull-requests: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -75,18 +76,30 @@ jobs:
             return 1
           }
 
+          has_nocross() {
+            for pkg in $packages; do
+              local template="srcpkgs/${pkg}/template"
+              [ -f "$template" ] || continue
+              grep -q '^nocross=' "$template" && return 0
+            done
+            return 1
+          }
+
           add_cfg() {
             [ -n "$matrix_configs" ] && matrix_configs="${matrix_configs},"
-            matrix_configs="${matrix_configs}{\"arch\":\"$1\",\"host\":\"$2\",\"libc\":\"$3\",\"platform\":\"linux/amd64\",\"test\":$4}"
+            matrix_configs="${matrix_configs}{\"arch\":\"$1\",\"host\":\"$2\",\"runner\":\"$3\",\"platform\":\"$4\",\"test\":$5,\"native\":$6}"
           }
 
           matrix_configs=""
           if [ -n "$packages" ]; then
-            arch_needed "x86_64"       && add_cfg "x86_64"       "x86_64"      "glibc" 1
-            arch_needed "aarch64"      && add_cfg "aarch64"      "x86_64"      "glibc" 0
-            arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "musl"  1
-            arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "musl"  0
-            [ -z "$matrix_configs" ] && add_cfg "x86_64" "x86_64" "glibc" 1
+            arch_needed "x86_64"       && add_cfg "x86_64"       "x86_64"      "ubuntu-latest"    "linux/amd64" 1 false
+            arch_needed "aarch64"      && add_cfg "aarch64"      "x86_64"      "ubuntu-latest"    "linux/amd64" 0 false
+            arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "ubuntu-latest"    "linux/amd64" 1 false
+            arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
+            if arch_needed "aarch64" && has_nocross; then
+              add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
+            fi
+            [ -z "$matrix_configs" ] && add_cfg "x86_64" "x86_64" "ubuntu-latest" "linux/amd64" 1 false
           fi
           echo "matrix={\"config\":[${matrix_configs}]}" >> "$GITHUB_OUTPUT"
 
@@ -94,9 +107,12 @@ jobs:
     name: Test PR changes
     needs: detect
     if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
+      image: ghcr.io/${{ github.repository_owner }}/oco-builder-${{ matrix.config.host }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --platform ${{ matrix.config.platform }} --privileged
       volumes:
         - /dev:/dev
@@ -104,6 +120,7 @@ jobs:
         ARCH: '${{ matrix.config.arch }}'
         BOOTSTRAP: '${{ matrix.config.host }}'
         TEST: '${{ matrix.config.test }}'
+        NATIVE: '${{ matrix.config.native }}'
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
@@ -111,10 +128,8 @@ jobs:
     steps:
       - name: Prepare container
         run: |
-          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
-          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
-          useradd -G xbuilder -M builder
+          xbps-install -Syu xbps
+          xbps-install -yu
 
       - name: Checkout repo (PR head)
         run: |
@@ -123,30 +138,17 @@ jobs:
           git fetch --no-tags origin "${{ github.event.pull_request.head.sha }}" --depth 1
           git checkout --detach "${{ github.event.pull_request.head.sha }}"
 
-      - name: Checkout void-packages
-        run: |
-          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
-          cd void-packages
-          git checkout --detach master
-
       - name: Merge templates and edit shlibs
         run: |
-          extra/update-shlibs -s void-packages/common/shlibs
+          extra/update-shlibs -s /void-packages/common/shlibs
 
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
-            rm -rf "void-packages/srcpkgs/$template_name"
-            cp -rv "$template" void-packages/srcpkgs/
+            rm -rf "/void-packages/srcpkgs/$template_name"
+            cp -rv "$template" /void-packages/srcpkgs/
           done
-
-      - name: Prepare masterdir
-        run: |
-          cd void-packages
-          chown -R builder:builder .
-          sudo -Eu builder common/travis/set_mirror.sh
-          sudo -Eu builder common/travis/prepare.sh
-          common/travis/fetch-xtools.sh
+          chown -R builder:builder /void-packages/srcpkgs /void-packages/common
 
       - name: Lint templates
         if: matrix.config.arch == 'x86_64'
@@ -154,7 +156,7 @@ jobs:
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           packages="${{ needs.detect.outputs.packages }}"
-          cd void-packages
+          cd /void-packages
 
           for template_name in $packages; do
             echo "==> Linting ${template_name}"
@@ -173,11 +175,14 @@ jobs:
       - name: Build packages
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          cd void-packages
+          cd /void-packages
           packages="${{ needs.detect.outputs.packages }}"
 
+          arch=""
+          cross=false
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
+            case "$ARCH" in aarch64*) cross=true ;; esac
           fi
 
           if [ "$TEST" = 1 ]; then
@@ -215,6 +220,14 @@ jobs:
               echo "==> Skipping ${pkg}: not available for ${ARCH}"
               continue
             fi
+            if [ "$cross" = "true" ] && grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
+              echo "==> Skipping ${pkg}: nocross (built natively)"
+              continue
+            fi
+            if [ "$NATIVE" = "true" ] && ! grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
+              echo "==> Skipping ${pkg}: not nocross (built in cross job)"
+              continue
+            fi
             echo "==> Building ${pkg}"
             sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
             echo
@@ -224,9 +237,12 @@ jobs:
     name: Build and publish packages
     needs: detect
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/void-linux/void-${{ matrix.config.libc }}-full:20250616R1
+      image: ghcr.io/${{ github.repository_owner }}/oco-builder-${{ matrix.config.host }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
       options: --platform ${{ matrix.config.platform }} --privileged
       volumes:
         - /dev:/dev
@@ -234,6 +250,7 @@ jobs:
         ARCH: '${{ matrix.config.arch }}'
         BOOTSTRAP: '${{ matrix.config.host }}'
         TEST: '${{ matrix.config.test }}'
+        NATIVE: '${{ matrix.config.native }}'
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
@@ -241,10 +258,8 @@ jobs:
     steps:
       - name: Prepare container
         run: |
-          mkdir -p /etc/xbps.d && cp /usr/share/xbps.d/*-repository-*.conf /etc/xbps.d/
-          sed -i 's|repo-default|repo-ci|g' /etc/xbps.d/*-repository-*.conf
-          xbps-install -Syu xbps && xbps-install -yu && xbps-install -y sudo bash curl git
-          useradd -G xbuilder -M builder
+          xbps-install -Syu xbps
+          xbps-install -yu
 
       - name: Checkout this repo
         run: |
@@ -253,39 +268,29 @@ jobs:
           git fetch --no-tags origin "${{ github.sha }}" --depth 1
           git checkout --detach "${{ github.sha }}"
 
-      - name: Checkout void-packages
-        run: |
-          git clone --depth 1 https://github.com/void-linux/void-packages.git void-packages
-          cd void-packages
-          git checkout --detach master
-
       - name: Merge templates and edit shlibs
         run: |
-          extra/update-shlibs -s void-packages/common/shlibs
+          extra/update-shlibs -s /void-packages/common/shlibs
 
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
-            rm -rf "void-packages/srcpkgs/$template_name"
-            cp -rv "$template" void-packages/srcpkgs/
+            rm -rf "/void-packages/srcpkgs/$template_name"
+            cp -rv "$template" /void-packages/srcpkgs/
           done
-
-      - name: Prepare masterdir
-        run: |
-          cd void-packages
-          chown -R builder:builder .
-          sudo -Eu builder common/travis/set_mirror.sh
-          sudo -Eu builder common/travis/prepare.sh
-          common/travis/fetch-xtools.sh
+          chown -R builder:builder /void-packages/srcpkgs /void-packages/common
 
       - name: Build packages
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          cd void-packages
+          cd /void-packages
           packages="${{ needs.detect.outputs.packages }}"
 
+          arch=""
+          cross=false
           if [ "$BOOTSTRAP" != "$ARCH" ]; then
             arch="-a $ARCH"
+            case "$ARCH" in aarch64*) cross=true ;; esac
           fi
 
           if [ "$TEST" = 1 ]; then
@@ -321,6 +326,14 @@ jobs:
           for pkg in ${PKGS}; do
             if ! pkg_arch_ok "$pkg" "${ARCH}"; then
               echo "==> Skipping ${pkg}: not available for ${ARCH}"
+              continue
+            fi
+            if [ "$cross" = "true" ] && grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
+              echo "==> Skipping ${pkg}: nocross (built natively)"
+              continue
+            fi
+            if [ "$NATIVE" = "true" ] && ! grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
+              echo "==> Skipping ${pkg}: not nocross (built in cross job)"
               continue
             fi
             echo "==> Building ${pkg}"
@@ -333,7 +346,7 @@ jobs:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.config.arch }}
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
-        working-directory: void-packages/hostdir/binpkgs/
+        working-directory: /void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
@@ -358,8 +371,8 @@ jobs:
           echo "==> Cleaning up private key"
           rm -f private.pem
 
-      - name: Upload to Surfer
-        working-directory: void-packages/hostdir/binpkgs
+      - name: Upload
+        working-directory: /void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}
           XBPS_ARCH: ${{ matrix.config.arch }}
