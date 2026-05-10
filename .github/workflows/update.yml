@@ -92,6 +92,30 @@ jobs:
           git push || echo "Nothing to push"
           git status
 
+      - name: Upload changed website assets to Surfer
+        env:
+          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
+        run: |
+          WEBDAV="https://repo.osowoso.org/_webdav"
+
+          git fetch origin page --depth=1 2>/dev/null || true
+
+          echo "==> Uploading changed website assets to Surfer"
+          for file in docs/*; do
+            [[ -f $file ]] || continue
+            fname=$(basename "$file")
+            old=$(git show origin/page:"$fname" 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
+            new=$(sha256sum < "$file" | cut -d' ' -f1)
+            if [[ "$old" != "$new" ]]; then
+              echo "  Uploading (changed): $fname"
+              curl -s -T "$file" "${WEBDAV}/${fname}" -u ":${SURFER_TOKEN}" \
+                || echo "  Warning: failed to upload $fname"
+            else
+              echo "  Skipped (unchanged): $fname"
+            fi
+          done
+          echo "==> Done: https://repo.osowoso.org/"
+
       - name: Deploy website to page branch
         env:
           TOKEN: ${{ secrets.WORKFLOWS }}

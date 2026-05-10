@@ -227,18 +227,6 @@ main() {
 
 	generate-index-html "$ARCH" "$final_pkgs" "$template" "$webdav"
 
-	# Upload static assets to root (style.css, favicon.ico)
-	echo '==> Uploading static assets'
-	local root_webdav="${SURFER_URL}/_webdav"
-	local asset
-	for asset in style.css favicon.ico; do
-		local src="${script_dir}/src/${asset}"
-		[[ -f $src ]] || continue
-		echo "  Uploading: ${asset}"
-		curl -s -T "$src" "${root_webdav}/${asset}" \
-			-u ":${SURFER_TOKEN}" || echo "  Warning: failed to upload ${asset}"
-	done
-
 	# Upload packages, repodata, and index.html
 	echo '==> Uploading to Surfer'
 	local file fname
