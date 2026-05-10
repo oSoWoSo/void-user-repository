@@ -142,7 +142,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          extra/update-shlibs -s /void-packages/common/shlibs
+          extra/shlibs-update -s /void-packages/common/shlibs
 
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
@@ -272,7 +272,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          extra/update-shlibs -s /void-packages/common/shlibs
+          extra/shlibs-update -s /void-packages/common/shlibs
 
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
