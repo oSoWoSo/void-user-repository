@@ -118,11 +118,26 @@ Create PR
 | menu-themes | 0.8.0 | https://github.com/kando-menu/menu-themes | zenobit |  |
 | mesa-amber | 21.3.9 | https://gitlab.freedesktop.org/mesa/mesa/-/blob/amber/docs/relnotes/21.3.9.rst | Bella Viola Wagner |  |
 | nebula-gtk | 1.3.7 | https://github.com/Letdown2491/nebula-gtk | zenobit |  |
+| nwg-clipman | 0.2.8 | https://github.com/nwg-piotr/nwg-clipman | zenobit |  |
+| nwg-displays | 0.4.1 | https://nwg-piotr.github.io/nwg-shell/nwg-displays | zenobit |  |
+| nwg-dock | 0.4.3 | https://nwg-piotr.github.io/nwg-shell/nwg-dock | zenobit |  |
+| nwg-drawer | 0.7.5 | https://nwg-piotr.github.io/nwg-shell/nwg-drawer | zenobit |  |
+| nwg-hello | 0.4.5 | https://github.com/nwg-piotr/nwg-hello | zenobit |  |
+| nwg-icon-picker | 0.1.1 | https://github.com/nwg-piotr/nwg-icon-picker | zenobit |  |
+| nwg-menu | 0.1.9 | https://nwg-piotr.github.io/nwg-shell/nwg-menu | zenobit |  |
+| nwg-panel | 0.10.13 | https://nwg-piotr.github.io/nwg-shell/nwg-panel | zenobit |  |
+| nwg-readme-browser | 0.1.7 | https://nwg-piotr.github.io/nwg-shell/nwg-readme-browser | zenobit |  |
+| nwg-shell | 0.5.50 | https://nwg-piotr.github.io/nwg-shell | zenobit |  |
+| nwg-shell-config | 0.5.64 | https://nwg-piotr.github.io/nwg-shell/nwg-shell-config | zenobit |  |
+| nwg-shell-wallpapers | 1.5 | https://github.com/nwg-piotr/nwg-shell-wallpapers | zenobit |  |
 | pop-fonts | 0.0.0 | https://github.com/pop-os/fonts | Bella Wagner |  |
 | pop-icons | 3.5.1 | https://github.com/pop-os/icon-theme | Bella Wagner |  |
 | pop-launcher | 1.2.7 | https://github.com/pop-os/launcher | Bella Wagner | x86_64* i686 |
 | pop-sounds-theme | 5.5.1 | https://github.com/pop-os/gtk-theme | Bella Wagner |  |
 | python3-anysqlite | 0.0.5 | https://github.com/karpetrosyan/anysqlite | zenobit |  |
+| python3-dasbus | 1.7 | https://github.com/dasbus-project/dasbus | zenobit |  |
+| python3-geographiclib | 2.1 | https://geographiclib.sourceforge.io/ | zenobit |  |
+| python3-geopy | 2.4.1 | https://github.com/geopy/geopy | zenobit |  |
 | python3-hishel | 1.1.9 | https://github.com/karpetrosyan/hishel | zenobit |  |
 | python3-inline-snapshot | 0.32.6 | https://15r10nk.github.io/inline-snapshot/latest | zenobit |  |
 | python3-linkify-it-py | 2.1.0 | https://github.com/tsutsu3/linkify-it-py | Orphaned |  |

@@ -523,7 +523,7 @@ target_arch_pages() { ## Generate per-architecture index.html pages in docs/
 		} > "$pkg_tmp"
 
 		# SVG color script
-		< src/svg-color.html > "$svg_tmp"
+		cp src/svg-color.html "$svg_tmp"
 
 		# Process template: simple substitutions via sed, multiline via awk
 		sed \
