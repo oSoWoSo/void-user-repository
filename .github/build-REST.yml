@@ -109,7 +109,7 @@ jobs:
     if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
     runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/${{ github.repository_owner }}/oco-builder-${{ matrix.config.host }}:latest
+      image: ghcr.io/osowoso/oco-builder-${{ matrix.config.host }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -239,7 +239,7 @@ jobs:
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
     runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/${{ github.repository_owner }}/oco-builder-${{ matrix.config.host }}:latest
+      image: ghcr.io/osowoso/oco-builder-${{ matrix.config.host }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
