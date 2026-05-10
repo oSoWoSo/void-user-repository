@@ -95,11 +95,11 @@ generate-index-html() {
 
 	sed \
 		-e "s|__ARCH__|${arch}|g" \
-		-e "s|__CSS_URL__|https://repo.osowoso.org/style.css|g" \
+		-e "s|__CSS_URL__|../style.css|g" \
 		-e "s|__HOME_URL__|https://repo.osowoso.org|g" \
 		-e "s|__REPO_URL__|${SURFER_URL}/${arch}|g" \
 		-e "s|__GIT_CI_URL__|${GIT_CI_URL:-}|g" \
-		-e 's|__FAVICON__|<link rel="icon" href="https://repo.osowoso.org/favicon.ico" />|g' \
+		-e 's|__FAVICON__|<link rel="icon" href="../favicon.ico" />|g' \
 		-e 's|__SVGCOLOR__||g' \
 		"$template" \
 	| awk \
@@ -226,6 +226,18 @@ main() {
 	done
 
 	generate-index-html "$ARCH" "$final_pkgs" "$template" "$webdav"
+
+	# Upload static assets to root (style.css, favicon.ico)
+	echo '==> Uploading static assets'
+	local root_webdav="${SURFER_URL}/_webdav"
+	local asset
+	for asset in style.css favicon.ico; do
+		local src="${script_dir}/src/${asset}"
+		[[ -f $src ]] || continue
+		echo "  Uploading: ${asset}"
+		curl -s -T "$src" "${root_webdav}/${asset}" \
+			-u ":${SURFER_TOKEN}" || echo "  Warning: failed to upload ${asset}"
+	done
 
 	# Upload packages, repodata, and index.html
 	echo '==> Uploading to Surfer'
