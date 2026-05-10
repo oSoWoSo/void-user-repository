@@ -7,7 +7,7 @@ maintainer="zenobit <zenobit@disroot.org>"
 license="GPL-3.0-or-later"
 homepage="https://github.com/danthem/undelete-btrfs"
 distfiles="https://github.com/danthem/undelete-btrfs/archive/refs/tags/v${version}.tar.gz"
-checksum=99d47ccda5f9b8c4722dfe4fd5ae4342e3cbb68b94f2a9f548278b8ea2a7f811
+checksum=65d0aef4fc746e7d31ed1ad5eac06dbb36495c87a8787ac84c2e15e47f5f34a0
 
 do_install() {
 	vbin undelete.sh undelete-btrfs
