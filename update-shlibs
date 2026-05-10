@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+#
+# Apply shlibs_remove and shlibs_append patches to a void-packages shlibs file.
+#
+# Author: zenobit <zenobit@disroot.org>
+# License: GPL-3.0-only
+
+SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+
+SHLIBS_FILE='void-packages/common/shlibs'
+APPEND_FILE="${SCRIPT_DIR}/shlibs_append"
+REMOVE_FILE="${SCRIPT_DIR}/shlibs_remove"
+
+usage() {
+	local prog=${0##*/}
+	cat <<-EOF
+	Usage: $prog [options]
+
+	Apply shlibs_remove and shlibs_append patches to a void-packages shlibs file.
+
+	Options
+	  -s <file>   shlibs file to patch       (default: ${SHLIBS_FILE})
+	  -a <file>   entries to append          (default: shlibs_append next to this script)
+	  -r <file>   entries to remove          (default: shlibs_remove next to this script)
+	  -h          print this message and exit
+	EOF
+}
+
+fatal() {
+	echo '[FATAL]' "$@" >&2
+	exit 1
+}
+
+remove-entries() {
+	local shlibs=$1 removefile=$2 line
+	echo '==> Removing shlibs entries'
+	while IFS= read -r line; do
+		[[ -z $line ]] && continue
+		grep -vF "$line" "$shlibs" > "${shlibs}.tmp" \
+			&& mv "${shlibs}.tmp" "$shlibs"
+		echo "   - $line"
+	done < "$removefile"
+}
+
+append-entries() {
+	local shlibs=$1 appendfile=$2 line
+	echo '==> Adding shlibs entries'
+	while IFS= read -r line; do
+		[[ -z $line ]] && continue
+		if ! grep -qF "$line" "$shlibs"; then
+			echo "$line" >> "$shlibs"
+			echo "   + $line"
+		fi
+	done < "$appendfile"
+}
+
+main() {
+	local opt OPTIND OPTARG
+	while getopts 'hs:a:r:' opt; do
+		case "$opt" in
+			h) usage; return 0 ;;
+			s) SHLIBS_FILE=$OPTARG ;;
+			a) APPEND_FILE=$OPTARG ;;
+			r) REMOVE_FILE=$OPTARG ;;
+			*) usage >&2; return 1 ;;
+		esac
+	done
+	shift "$((OPTIND - 1))"
+
+	[[ -f $SHLIBS_FILE ]] || fatal "shlibs file not found: ${SHLIBS_FILE}"
+
+	[[ -f $REMOVE_FILE ]] && remove-entries "$SHLIBS_FILE" "$REMOVE_FILE"
+	[[ -f $APPEND_FILE ]] && append-entries "$SHLIBS_FILE" "$APPEND_FILE"
+}
+
+main "$@"

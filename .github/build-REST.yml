@@ -131,29 +131,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          SHLIBS_FILE="void-packages/common/shlibs"
-          APPEND_FILE="extra/shlibs_append"
-          REMOVE_FILE="extra/shlibs_remove"
-
-          if [ -f "$REMOVE_FILE" ]; then
-            echo "==> Removing shlibs entries"
-            while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              grep -vF "$line" "$SHLIBS_FILE" > "$SHLIBS_FILE.tmp" && mv "$SHLIBS_FILE.tmp" "$SHLIBS_FILE"
-              echo "   - $line"
-            done < "$REMOVE_FILE"
-          fi
-
-          if [ -f "$APPEND_FILE" ]; then
-            echo "==> Adding shlibs entries"
-            while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              if ! grep -qF "$line" "$SHLIBS_FILE"; then
-                echo "$line" >> "$SHLIBS_FILE"
-                echo "   + $line"
-              fi
-            done < "$APPEND_FILE"
-          fi
+          extra/update-shlibs -s void-packages/common/shlibs
 
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
@@ -283,29 +261,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          SHLIBS_FILE="void-packages/common/shlibs"
-          APPEND_FILE="extra/shlibs_append"
-          REMOVE_FILE="extra/shlibs_remove"
-
-          if [ -f "$REMOVE_FILE" ]; then
-            echo "==> Removing shlibs entries"
-            while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              grep -vF "$line" "$SHLIBS_FILE" > "$SHLIBS_FILE.tmp" && mv "$SHLIBS_FILE.tmp" "$SHLIBS_FILE"
-              echo "   - $line"
-            done < "$REMOVE_FILE"
-          fi
-
-          if [ -f "$APPEND_FILE" ]; then
-            echo "==> Adding shlibs entries"
-            while IFS= read -r line; do
-              [ -z "$line" ] && continue
-              if ! grep -qF "$line" "$SHLIBS_FILE"; then
-                echo "$line" >> "$SHLIBS_FILE"
-                echo "   + $line"
-              fi
-            done < "$APPEND_FILE"
-          fi
+          extra/update-shlibs -s void-packages/common/shlibs
 
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
