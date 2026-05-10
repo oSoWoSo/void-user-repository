@@ -1,0 +1,242 @@
+#!/usr/bin/env bash
+#
+# Upload built XBPS packages to the Surfer (WebDAV) repository,
+# update repodata, sign the index, and generate index.html.
+#
+# Author: zenobit <zenobit@disroot.org>
+# Date: 10, May, 2026
+# License: GPL-3.0-only
+
+SURFER_URL="https://repo.osowoso.org"
+SIGNED_BY="zenobit <zenobit@disroot.org>"
+
+usage() {
+	local prog=${0##*/}
+	cat <<-EOF
+	Usage: $prog [options]
+
+	Upload packages from BUILDDIR to the Surfer WebDAV repository.
+
+	Required environment:
+	  ARCH           Target architecture (x86_64, x86_64-musl, aarch64, aarch64-musl)
+	  SURFER_TOKEN   WebDAV authentication token
+	  PRIV_KEY       Private key (PEM) for repository signing
+
+	Optional environment:
+	  REMOVED        Space-separated list of removed package names
+	  BUILDDIR       Directory with built packages (default: current dir)
+	  GIT_CI_URL     CI link shown in page footer
+
+	Options
+	  -h   print this message and exit
+	EOF
+}
+
+fatal() {
+	echo '[FATAL]' "$@" >&2
+	exit 1
+}
+
+fetch-remote-list() {
+	curl -s -X PROPFIND "${1}/" \
+		-H 'Depth: 1' \
+		-u ":${SURFER_TOKEN}" 2>/dev/null \
+		| grep -o '<D:href>[^<]*\.xbps</D:href>' \
+		| sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true
+}
+
+delete-remote() {
+	curl -s -X DELETE "${1}" -u ":${SURFER_TOKEN}" || true
+}
+
+upload-file() {
+	local file="$1" dest="$2"
+	echo "  Uploading: $(basename "$file")"
+	curl -s -T "$file" "$dest" -u ":${SURFER_TOKEN}" \
+		|| echo "  Warning: failed to upload $(basename "$file")"
+}
+
+pkg-version() {
+	local without_arch="${1%.*}"
+	local ver
+	ver=$(printf '%s' "$without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
+	printf '%s' "${without_arch%-${ver}}"
+}
+
+generate-index-html() {
+	local arch="$1" final_pkgs="$2" template="$3" webdav="$4"
+
+	local nav_tmp pkg_tmp a
+	nav_tmp=$(mktemp)
+	pkg_tmp=$(mktemp)
+
+	for a in x86_64 x86_64-musl aarch64 aarch64-musl; do
+		if [[ $a == "$arch" ]]; then
+			printf '  <li><a href="." class="active">%s</a></li>\n' "$a"
+		else
+			printf '  <li><a href="../%s/">%s</a></li>\n' "$a" "$a"
+		fi
+	done >> "$nav_tmp"
+
+	{
+		printf '<table>\n<thead><tr><th>package</th><th>version</th><th>download</th></tr></thead>\n<tbody>\n'
+		printf '%s\n' "$final_pkgs" | sort | while IFS= read -r xbps_file; do
+			[[ -z $xbps_file ]] && continue
+			local base without_arch ver name
+			base="${xbps_file%.xbps}"
+			without_arch="${base%.*}"
+			ver=$(printf '%s' "$without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
+			name="${without_arch%-${ver}}"
+			printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="%s/%s/%s">&#x2b07; %s</a></td></tr>\n' \
+				"$name" "$ver" "$SURFER_URL" "$arch" "$xbps_file" "$xbps_file"
+		done
+		printf '</tbody>\n</table>\n'
+	} > "$pkg_tmp"
+
+	sed \
+		-e "s|__ARCH__|${arch}|g" \
+		-e "s|__CSS_URL__|https://repo.osowoso.org/style.css|g" \
+		-e "s|__HOME_URL__|https://repo.osowoso.org|g" \
+		-e "s|__REPO_URL__|${SURFER_URL}/${arch}|g" \
+		-e "s|__GIT_CI_URL__|${GIT_CI_URL:-}|g" \
+		-e 's|__FAVICON__|<link rel="icon" href="https://repo.osowoso.org/favicon.ico" />|g' \
+		-e 's|__SVGCOLOR__||g' \
+		"$template" \
+	| awk \
+		-v nav="$nav_tmp" \
+		-v tbl="$pkg_tmp" \
+		'/__NAV_ARCH_LINKS__/ { while ((getline ln < nav) > 0) print ln; close(nav); next }
+		 /__PACKAGE_TABLE__/  { while ((getline ln < tbl) > 0) print ln; close(tbl); next }
+		 { print }' \
+	> index.html
+
+	rm -f "$nav_tmp" "$pkg_tmp"
+	local pkg_count
+	pkg_count=$(printf '%s\n' "$final_pkgs" | grep -c '.' || echo 0)
+	echo "  Generated index.html (${pkg_count} packages)"
+}
+
+main() {
+	local opt OPTIND OPTARG
+	while getopts 'h' opt; do
+		case "$opt" in
+			h) usage; return 0;;
+			*) usage >&2; return 1;;
+		esac
+	done
+	shift "$((OPTIND - 1))"
+
+	[[ -n $ARCH ]]         || fatal 'ARCH is required'
+	[[ -n $SURFER_TOKEN ]] || fatal 'SURFER_TOKEN is required'
+	[[ -n $PRIV_KEY ]]     || fatal 'PRIV_KEY is required'
+
+	local builddir="${BUILDDIR:-$(pwd)}"
+	local webdav="${SURFER_URL}/_webdav/${ARCH}"
+	local script_dir
+	script_dir="$(cd "$(dirname "$0")" && pwd)"
+	local template="${script_dir}/.github/arch-index-template.html"
+
+	[[ -f $template ]] || fatal "Template not found: $template"
+
+	if ! ls "${builddir}"/*.xbps 1>/dev/null 2>&1; then
+		echo '⚠️  No packages to upload'
+		return 0
+	fi
+
+	local work_dir
+	work_dir=$(mktemp -d)
+	trap 'rm -rf "$work_dir"' EXIT
+
+	# Ensure remote arch directory exists
+	curl -s -X MKCOL "${webdav}/" -u ":${SURFER_TOKEN}" || true
+
+	# Fetch remote file list
+	echo '==> Fetching remote package list'
+	local remote_list
+	remote_list=$(fetch-remote-list "$webdav")
+
+	cd "$work_dir" || fatal "Cannot cd to $work_dir"
+
+	# Download repodata
+	echo '==> Downloading repodata'
+	curl -sf -o "${ARCH}-repodata" "${SURFER_URL}/${ARCH}/${ARCH}-repodata" \
+		-u ":${SURFER_TOKEN}" 2>/dev/null || true
+
+	# Copy new packages to work dir
+	cp "${builddir}"/*.xbps . 2>/dev/null || true
+	cp "${builddir}"/*.xbps.sig2 . 2>/dev/null || true
+
+	# Delete old versions of updated packages from remote
+	echo '==> Cleaning old package versions from remote'
+	local new_pkg new_basename deleted_pkgs=''
+	for new_pkg in "${builddir}"/*.xbps; do
+		[[ -f $new_pkg ]] || continue
+		new_basename=$(basename "$new_pkg")
+		local pkg_name
+		pkg_name=$(pkg-version "${new_basename%.xbps}")
+
+		local old_pkg
+		while IFS= read -r old_pkg; do
+			[[ $old_pkg == "$new_basename" ]] && continue
+			echo "  Deleting old: $old_pkg"
+			delete-remote "${webdav}/${old_pkg}"
+			delete-remote "${webdav}/${old_pkg}.sig2"
+			deleted_pkgs="${deleted_pkgs} ${old_pkg}"
+		done < <(printf '%s\n' $remote_list | grep "^${pkg_name}-[0-9]")
+	done
+
+	# Handle removed templates
+	if [[ -n $REMOVED ]]; then
+		echo "==> Removing packages for deleted templates: $REMOVED"
+		local pkg old_pkg
+		for pkg in $REMOVED; do
+			while IFS= read -r old_pkg; do
+				echo "  Removing: $old_pkg"
+				if curl -sf -o "$old_pkg" "${SURFER_URL}/${ARCH}/${old_pkg}" \
+						-u ":${SURFER_TOKEN}" 2>/dev/null; then
+					xbps-rindex -r . "$old_pkg" || true
+					rm -f "$old_pkg" "${old_pkg}.sig2"
+				fi
+				delete-remote "${webdav}/${old_pkg}"
+				delete-remote "${webdav}/${old_pkg}.sig2"
+				deleted_pkgs="${deleted_pkgs} ${old_pkg}"
+			done < <(printf '%s\n' $remote_list | grep "^${pkg}-[0-9]")
+		done
+	fi
+
+	# Update and sign repository index
+	echo '==> Updating repository index'
+	xbps-rindex -a ./*.xbps 2>/dev/null || true
+
+	echo '==> Signing repository'
+	printf '%s\n' "$PRIV_KEY" > private.pem
+	chmod 600 private.pem
+	xbps-rindex -s --signedby "$SIGNED_BY" --privkey private.pem "$PWD"
+	rm -f private.pem
+
+	# Compute final package list (remote + new - deleted)
+	local new_basenames final_pkgs dpkg
+	new_basenames=$(ls "${builddir}"/*.xbps 2>/dev/null | xargs -r -I{} basename {} || true)
+	final_pkgs=$(
+		{ printf '%s\n' $remote_list; printf '%s\n' $new_basenames; } \
+		| grep '\.xbps$' | sort -u
+	)
+	for dpkg in $deleted_pkgs; do
+		final_pkgs=$(printf '%s\n' "$final_pkgs" | grep -v "^${dpkg}$")
+	done
+
+	generate-index-html "$ARCH" "$final_pkgs" "$template" "$webdav"
+
+	# Upload packages, repodata, and index.html
+	echo '==> Uploading to Surfer'
+	local file fname
+	for file in ./*.xbps ./*.xbps.sig2 ./*-repodata ./index.html; do
+		[[ -f $file ]] || continue
+		fname=$(basename "$file")
+		upload-file "$file" "${webdav}/${fname}"
+	done
+
+	echo "==> Done: ${SURFER_URL}/${ARCH}/"
+}
+
+main "$@"
