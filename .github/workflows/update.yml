@@ -141,28 +141,4 @@ jobs:
           git checkout -b page
           git add .
           git commit -m "Deploy: $(date -u '+%Y-%m-%d %H:%M UTC')"
-          git push --force \
-            "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" \
-            page
-
-      - name: Trigger build workflow
-        if: steps.detect.outputs.new_count > 0
-        env:
-          GH_TOKEN: ${{ secrets.WORKFLOWS }}
-        run: |
-          NEW_COUNT="${{ steps.detect.outputs.new_count }}"
-          SINGLE="${{ steps.detect.outputs.single_template }}"
-          MULTIPLE="${{ steps.detect.outputs.templates }}"
-
-          # Wait a bit for push (Just in case)
-          sleep 5
-
-          if [ "$NEW_COUNT" -eq 1 ]; then
-            echo "==> Triggering build for single template: $SINGLE"
-            gh workflow run build.yml -f template="$SINGLE"
-          elif [ "$NEW_COUNT" -gt 1 ]; then
-            echo "==> Triggering build for multiple templates: $MULTIPLE"
-            gh workflow run build.yml -f templates="$MULTIPLE"
-          fi
-
-          echo "==> Build workflow triggered successfully"
+          git push --force "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" page
