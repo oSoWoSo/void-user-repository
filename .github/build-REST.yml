@@ -132,6 +132,8 @@ jobs:
         run: |
           xbps-install -Syu xbps
           xbps-install -yu
+          sudo -Eu builder git -C /void-packages pull --ff-only
+          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
 
       - name: Checkout repo (PR head)
         run: |
@@ -262,6 +264,8 @@ jobs:
         run: |
           xbps-install -Syu xbps
           xbps-install -yu
+          sudo -Eu builder git -C /void-packages pull --ff-only
+          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
 
       - name: Checkout this repo
         run: |

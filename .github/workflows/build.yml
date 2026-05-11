@@ -196,11 +196,12 @@ jobs:
             return 1
           }
 
-          has_nocross() {
+          needs_native_aarch64() {
             for pkg in $packages; do
               local template="srcpkgs/${pkg}/template"
               [ -f "$template" ] || continue
-              grep -q '^nocross=' "$template" && return 0
+              grep -q '^nocross=' "$template" || continue
+              pkg_arch_ok "$pkg" "aarch64" && return 0
             done
             return 1
           }
@@ -216,9 +217,7 @@ jobs:
             arch_needed "aarch64"      && add_cfg "aarch64"      "x86_64"      "ubuntu-latest"    "linux/amd64" 0 false
             arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "ubuntu-latest"    "linux/amd64" 1 false
             arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
-            if arch_needed "aarch64" && has_nocross; then
-              add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
-            fi
+            needs_native_aarch64 && add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
             [ -z "$matrix_configs" ] && add_cfg "x86_64" "x86_64" "ubuntu-latest" "linux/amd64" 1 false
           fi
           echo "matrix={\"config\":[${matrix_configs}]}" >> "$GITHUB_OUTPUT"
@@ -250,6 +249,8 @@ jobs:
         run: |
           xbps-install -Syu xbps
           xbps-install -yu
+          sudo -Eu builder git -C /void-packages pull --ff-only
+          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
 
       - name: Checkout repo (PR head)
         run: |
@@ -258,14 +259,10 @@ jobs:
           git fetch --no-tags origin "${{ github.event.pull_request.head.sha }}" --depth 1
           git checkout --detach "${{ github.event.pull_request.head.sha }}"
 
-      - name: Update void-packages
-        run: |
-          sudo -Eu builder git -C /void-packages pull --ff-only
-          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
-
       - name: Merge templates and edit shlibs
         run: |
           extra/shlibs-update -s /void-packages/common/shlibs
+
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
@@ -384,6 +381,8 @@ jobs:
         run: |
           xbps-install -Syu xbps
           xbps-install -yu
+          sudo -Eu builder git -C /void-packages pull --ff-only
+          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
 
       - name: Checkout this repo
         run: |
@@ -392,14 +391,10 @@ jobs:
           git fetch --no-tags origin "${{ github.sha }}" --depth 1
           git checkout --detach "${{ github.sha }}"
 
-      - name: Update void-packages
-        run: |
-          sudo -Eu builder git -C /void-packages pull --ff-only
-          sudo -Eu builder sh -c "cd /void-packages && ./xbps-src bootstrap-update"
-
       - name: Merge templates and edit shlibs
         run: |
           extra/shlibs-update -s /void-packages/common/shlibs
+
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
