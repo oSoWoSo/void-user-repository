@@ -1,0 +1,14 @@
+# Template file for 'ztd'
+pkgname=ztd
+version=0.0.0
+revision=1
+build_style=meson
+hostmakedepends="pkg-config spdlog"
+makedepends="fmt-devel openssl-devel"
+short_desc="Required C++ Standard"
+maintainer="zenobit <zenobit@disroot.org>"
+license="GPL-3.0-only"
+homepage="https://github.com/thermitegod/ztd"
+#distfiles="https://github.com/thermitegod/ztd/archive/refs/tags/v${version}.tar.gz"
+distfiles="https://github.com/thermitegod/ztd/archive/refs/heads/master.tar.gz"
+checksum=95ac0024942384496b940f048c8835496d045ad4e94363c58358b79b1a37269f
