@@ -115,6 +115,9 @@ on:
         - zen-browser-aarch64-bin
         - zen-browser-bin
         - zig
+# Apply changes in .github/build-REST.yml instead
+# .github/worlfkows/build.yml will be generated from build-REST.yml by CI
+
 permissions:
   contents: write
   pull-requests: read
@@ -226,7 +229,7 @@ jobs:
     if: github.event_name == 'pull_request' && needs.detect.outputs.packages != ''
     runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/${{ github.repository_owner }}/void-bootstrap-${{ matrix.config.host }}:latest
+      image: ghcr.io/osowoso/oco-builder-${{ matrix.config.host }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -262,8 +265,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          extra/update-shlibs -s /void-packages/common/shlibs
-
+          extra/shlibs-update -s /void-packages/common/shlibs
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
@@ -361,7 +363,7 @@ jobs:
     if: (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.packages != ''
     runs-on: ${{ matrix.config.runner }}
     container:
-      image: ghcr.io/${{ github.repository_owner }}/void-bootstrap-${{ matrix.config.host }}:latest
+      image: ghcr.io/osowoso/oco-builder-${{ matrix.config.host }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -397,8 +399,7 @@ jobs:
 
       - name: Merge templates and edit shlibs
         run: |
-          extra/update-shlibs -s /void-packages/common/shlibs
-
+          extra/shlibs-update -s /void-packages/common/shlibs
           echo "==> Copying templates..."
           for template in extra/srcpkgs/*; do
             template_name=$(basename "$template")
@@ -498,7 +499,7 @@ jobs:
           echo "==> Cleaning up private key"
           rm -f private.pem
 
-      - name: Upload to Surfer
+      - name: Upload
         if: steps.build.outputs.built == 'true'
         working-directory: /void-packages/hostdir/binpkgs
         env:
