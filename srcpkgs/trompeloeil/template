@@ -1,0 +1,11 @@
+# Template file for 'trompeloeil'
+pkgname=trompeloeil
+version=49
+revision=1
+build_style=cmake
+short_desc="Header only C++14 mocking framework"
+maintainer="zenobit <zenobit@disroot.org>"
+license="BSL-1.0"
+homepage="https://github.com/rollbear/trompeloeil"
+distfiles="https://github.com/rollbear/trompeloeil/archive/refs/tags/v${version}.tar.gz"
+checksum=2523571fb7920b2813cbc23b46e60294aba8ead7eba434bfec69c24408615593
