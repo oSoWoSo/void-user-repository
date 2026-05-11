@@ -1,0 +1,15 @@
+# Template file for 'magic_enum'
+pkgname=magic_enum
+version=0.9.8
+revision=1
+build_style=cmake
+short_desc="Static reflection for enums for modern C++"
+maintainer="zenobit <zenobit@disroot.org>"
+license="MIT"
+homepage="https://github.com/Neargye/magic_enum"
+distfiles="https://github.com/Neargye/magic_enum/archive/refs/tags/v${version}.tar.gz"
+checksum=1e54959a3f3cb675938d858603ad69d0f3f7c82439fc2bf86d7232daec2bd10e
+
+post_install() {
+	vlicense LICENSE
+}
