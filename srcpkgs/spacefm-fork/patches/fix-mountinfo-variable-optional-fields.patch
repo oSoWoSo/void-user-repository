@@ -1,0 +1,62 @@
+--- a/spacefm-master/src/common/vfs/linux/procfs.cxx
++++ b/spacefm-master/src/common/vfs/linux/procfs.cxx
+@@ -16,6 +16,8 @@
+ #include <string>
+ #include <vector>
+ 
++#include <algorithm>
++
+ #include <glibmm.h>
+ 
+ #include <ztd/ztd.hxx>
+@@ -47,13 +49,26 @@
+         }
+ 
+         const auto fields = ztd::split(line, " ");
+-        if (fields.size() != 11)
++        // mountinfo has 6 fixed fields, 0+ optional fields, "-" separator, then 3 fields
++        // minimum is 10 tokens (0 optional fields)
++        if (fields.size() < 10)
++        {
++            logger::error<logger::vfs>("Invalid mountinfo entry: size={}, line={}",
++                                       fields.size(),
++                                       line);
++            continue;
++        }
++
++        // Find "-" separator starting after the 6 mandatory fields
++        const auto sep_it = std::find(fields.begin() + 6, fields.end(), std::string{"-"});
++        if (sep_it == fields.end() || std::distance(sep_it, fields.end()) < 4)
+         {
+             logger::error<logger::vfs>("Invalid mountinfo entry: size={}, line={}",
+                                        fields.size(),
+                                        line);
+             continue;
+         }
++        const auto sep_idx = static_cast<std::size_t>(std::distance(fields.begin(), sep_it));
+ 
+         MountInfoEntry mount;
+ 
+@@ -65,11 +80,17 @@
+         mount.root = Glib::strcompress(fields[3]);        // Encoded Field
+         mount.mount_point = Glib::strcompress(fields[4]); // Encoded Field
+         mount.mount_options = fields[5];
+-        mount.optional_fields = fields[6];
+-        mount.separator = fields[7];
+-        mount.filesystem_type = fields[8];
+-        mount.mount_source = fields[9];
+-        mount.super_options = fields[10];
++        std::string opt;
++        for (std::size_t i = 6; i < sep_idx; ++i)
++        {
++            if (!opt.empty()) opt += ' ';
++            opt += fields[i];
++        }
++        mount.optional_fields = opt;
++        mount.separator = fields[sep_idx];
++        mount.filesystem_type = fields[sep_idx + 1];
++        mount.mount_source = fields[sep_idx + 2];
++        mount.super_options = fields[sep_idx + 3];
+ 
+         // logger::info<logger::vfs>("==========================================");
+         // logger::info<logger::vfs>("mount.mount_id        = {}", mount.mount_id);

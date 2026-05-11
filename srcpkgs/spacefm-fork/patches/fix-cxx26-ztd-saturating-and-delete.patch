@@ -1,0 +1,164 @@
+--- a/ztd-master/include/ztd/detail/types/integer.hxx
++++ b/ztd-master/include/ztd/detail/types/integer.hxx
+@@ -30,6 +30,80 @@
+ #include <utility>
+ 
+ #include <cmath>
++#include <limits>
++#include <type_traits>
++
++namespace std {
++
++template<typename To, typename From>
++constexpr enable_if_t<is_integral_v<To> && is_integral_v<From>, To>
++saturating_cast(const From v) noexcept {
++	if constexpr (is_unsigned_v<To> && is_unsigned_v<From>)
++		return v > numeric_limits<To>::max() ? numeric_limits<To>::max() : static_cast<To>(v);
++	else if constexpr (is_signed_v<To> && is_signed_v<From>)
++		return v < numeric_limits<To>::min() ? numeric_limits<To>::min() :
++			v > numeric_limits<To>::max() ? numeric_limits<To>::max() : static_cast<To>(v);
++	else if constexpr (is_signed_v<To> && is_unsigned_v<From>)
++		return v > static_cast<make_unsigned_t<To>>(numeric_limits<To>::max()) ?
++			numeric_limits<To>::max() : static_cast<To>(v);
++	else
++		return v < 0 ? 0 :
++			static_cast<make_unsigned_t<From>>(v) > numeric_limits<To>::max() ?
++			numeric_limits<To>::max() : static_cast<To>(v);
++}
++
++template<typename T>
++constexpr enable_if_t<is_integral_v<T>, T>
++saturating_add(const T a, const T b) noexcept {
++	if constexpr (is_unsigned_v<T>)
++		return a > numeric_limits<T>::max() - b ? numeric_limits<T>::max() : a + b;
++	else
++		return (b > 0 && a > numeric_limits<T>::max() - b) ? numeric_limits<T>::max() :
++			(b < 0 && a < numeric_limits<T>::min() - b) ? numeric_limits<T>::min() : a + b;
++}
++
++template<typename T>
++constexpr enable_if_t<is_integral_v<T>, T>
++saturating_sub(const T a, const T b) noexcept {
++	if constexpr (is_unsigned_v<T>)
++		return a < b ? 0 : a - b;
++	else
++		return (b < 0 && a > numeric_limits<T>::max() + b) ? numeric_limits<T>::max() :
++			(b > 0 && a < numeric_limits<T>::min() + b) ? numeric_limits<T>::min() : a - b;
++}
++
++template<typename T>
++constexpr enable_if_t<is_integral_v<T>, T>
++saturating_mul(const T a, const T b) noexcept {
++	if constexpr (is_unsigned_v<T>)
++		return b == 0 ? 0 :
++			a > numeric_limits<T>::max() / b ? numeric_limits<T>::max() : a * b;
++	else {
++		if (a == 0 || b == 0) return 0;
++		if (a > 0) {
++			if (b > 0)
++				return a > numeric_limits<T>::max() / b ? numeric_limits<T>::max() : a * b;
++			else
++				return b < numeric_limits<T>::min() / a ? numeric_limits<T>::min() : a * b;
++		} else {
++			if (b > 0)
++				return a < numeric_limits<T>::min() / b ? numeric_limits<T>::min() : a * b;
++			else
++				return -a > numeric_limits<T>::max() / -b ? numeric_limits<T>::max() : a * b;
++		}
++	}
++}
++
++template<typename T>
++constexpr enable_if_t<is_integral_v<T>, T>
++saturating_div(const T a, const T b) noexcept {
++	if constexpr (is_signed_v<T>)
++		if (a == numeric_limits<T>::min() && b == -1) return numeric_limits<T>::max();
++	return a / b;
++}
++
++} // namespace std
++
+ 
+ #include "../concepts.hxx"
+ #include "../panic.hxx"
+@@ -75,7 +149,7 @@
+     template<typename T>
+     constexpr integer(const T rhs) noexcept
+         requires(std::same_as<T, bool>)
+-    = delete ("help: cannot construct an integer from a bool");
++    = delete;
+ 
+     template<typename T>
+     // constexpr explicit integer(const T rhs)
+@@ -240,25 +314,25 @@
+ 
+     // conversions operators
+ 
+-    explicit operator bool() = delete ("help: use either '!= 0' or '== 0'");
++    explicit operator bool() = delete;
+ 
+-    constexpr operator uint8_t() = delete ("help: implicit conversion is not supported");
+-    constexpr operator uint16_t() = delete ("help: implicit conversion is not supported");
+-    constexpr operator uint32_t() = delete ("help: implicit conversion is not supported");
+-    constexpr operator uint64_t() = delete ("help: implicit conversion is not supported");
+-
+-    constexpr operator int8_t() = delete ("help: implicit conversion is not supported");
+-    constexpr operator int16_t() = delete ("help: implicit conversion is not supported");
+-    constexpr operator int32_t() = delete ("help: implicit conversion is not supported");
+-    constexpr operator int64_t() = delete ("help: implicit conversion is not supported");
++    constexpr operator uint8_t() = delete;
++    constexpr operator uint16_t() = delete;
++    constexpr operator uint32_t() = delete;
++    constexpr operator uint64_t() = delete;
++
++    constexpr operator int8_t() = delete;
++    constexpr operator int16_t() = delete;
++    constexpr operator int32_t() = delete;
++    constexpr operator int64_t() = delete;
+ 
+-    constexpr operator float() = delete ("help: implicit conversion is not supported");
+-    constexpr operator double() = delete ("help: implicit conversion is not supported");
++    constexpr operator float() = delete;
++    constexpr operator double() = delete;
+ 
+     // assignment operators
+ 
+     constexpr integer<Tag>&
+-    operator=(const bool rhs) = delete ("help: cannot assign a bool to an integer");
++    operator=(const bool rhs) = delete;
+ 
+     template<typename T>
+     constexpr integer<Tag>&
+@@ -287,10 +361,10 @@
+ 
+     // increment/decrement operators
+ 
+-    constexpr integer<Tag>& operator++() = delete ("help: use '+= 1' instead");
+-    constexpr integer<Tag> operator++(int) = delete ("help: use '+= 1' instead");
+-    constexpr integer<Tag>& operator--() = delete ("help: use '-= 1' instead");
+-    constexpr integer<Tag> operator--(int) = delete ("help: use '-= 1' instead");
++    constexpr integer<Tag>& operator++() = delete;
++    constexpr integer<Tag> operator++(int) = delete;
++    constexpr integer<Tag>& operator--() = delete;
++    constexpr integer<Tag> operator--(int) = delete;
+ 
+     // arithmetic operators
+ 
+@@ -1162,7 +1236,7 @@
+      * @return self + rhs, instead of overflowing will return a saturated value.
+      */
+     [[nodiscard]] constexpr integer<Tag> saturating_add(const integer<sign_conversion> rhs)
+-        const noexcept = delete ("TODO std::add_sat requires both args are the same type");
++        const noexcept = delete;
+ 
+     /**
+      * @brief saturating_sub - Checked integer subtraction
+@@ -1179,7 +1253,7 @@
+      * @return self - rhs, instead of overflowing will return a saturated value.
+      */
+     [[nodiscard]] constexpr integer<Tag> saturating_sub(const integer<sign_conversion> rhs)
+-        const noexcept = delete ("TODO std::sub_sat requires both args are the same type");
++        const noexcept = delete;
+ 
+     /**
+      * @brief saturating_mul - Checked integer multiplication

@@ -1,0 +1,59 @@
+# Template file for 'spacefm-fork'
+pkgname=spacefm-fork
+version=0.0.0
+revision=2
+build_style=meson
+create_wrksrc=yes
+hostmakedepends="
+	cmake
+	pkg-config
+	intltool
+	git
+	meson
+"
+makedepends="
+	gtk+3-devel
+	startup-notification-devel
+	eudev-libudev-devel
+	ffmpegthumbnailer-devel
+	botan-devel
+	pugixml-devel
+	libsigc++3-devel
+	gtkmm-devel
+	exo-devel
+	gtkmm4-devel
+	glycin-gtk4-devel
+	libgexiv2-devel
+	cli11
+	magic_enum
+	cppzmq
+	spdlog
+"
+depends="hicolor-icon-theme desktop-file-utils vulkan-loader"
+short_desc="Multi-panel tabbed file manager"
+maintainer="Orphaned <orphan@voidlinux.org>"
+license="GPL-3.0-or-later"
+homepage="https://github.com/thermitegod/spacefm"
+distfiles="https://github.com/thermitegod/spacefm/archive/refs/heads/master.tar.gz
+ https://github.com/thermitegod/ztd/archive/refs/heads/master.tar.gz>ztd.tar.gz
+ https://github.com/stephenberry/glaze/archive/refs/heads/master.tar.gz>glaze.tar.gz"
+checksum="777687b1e8782e16e5b4110616a249581de22dbcebe2d507308b213833ffd830
+ 95ac0024942384496b940f048c8835496d045ad4e94363c58358b79b1a37269f
+ 6a8271de87906820b1dc6539114682a8618cef962e2d2de40719582b1d96b09f"
+conflicts="spacefm"
+
+pre_configure() {
+	# Move spacefm source from extracted subdir into wrksrc
+	mv spacefm-master/* ./ 2>/dev/null || true
+	mv spacefm-master/.* ./ 2>/dev/null || true
+	rm -rf spacefm-master
+
+	# Setup ztd and glaze as meson subprojects
+	rm -rf subprojects/ztd subprojects/glaze
+	mv ztd-master subprojects/ztd
+	mv glaze-main subprojects/glaze
+
+	# Replace std::flat_map with std::map (GCC 14 lacks <flat_map>)
+	find . \( -name "*.cxx" -o -name "*.hxx" \) -path "*/src/*" \
+		-exec sed -i 's/std::flat_map/std::map/g; s/#include <flat_map>/#include <map>/g' {} +
+}

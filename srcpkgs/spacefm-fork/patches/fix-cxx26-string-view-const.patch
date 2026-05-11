@@ -1,0 +1,11 @@
+--- a/spacefm-master/src/common/vfs/libudevpp/udev_device.cxx
++++ b/spacefm-master/src/common/vfs/libudevpp/udev_device.cxx
+@@ -202,7 +202,7 @@
+ libudev::device::set_sysattr(const std::string_view named,
+                              const std::string_view value) const noexcept
+ {
+-    return udev_device_set_sysattr_value(handle.get(), named.data(), value.data()) >= 0;
++    return udev_device_set_sysattr_value(handle.get(), named.data(), const_cast<char*>(value.data())) >= 0;
+ }
+ 
+ std::vector<std::string>
