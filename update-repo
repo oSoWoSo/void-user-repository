@@ -355,7 +355,9 @@ main() {
 
 	[ "$_do_update$_do_packages$_do_web" = 1 ] || { usage >&2; return 1; }
 
-	[ -d "$SRCPKGS" ] || { usage >&2; fatal "srcpkgs directory not found: ${SRCPKGS}"; }
+	if [ "$_do_update" = 1 ] || [ "$_do_web" = 1 ]; then
+		[ -d "$SRCPKGS" ] || fatal "srcpkgs directory not found: ${SRCPKGS}"
+	fi
 
 	if [ "$_do_update" = 1 ]; then
 		[ -f "$README" ] || fatal "README not found: ${README}"
