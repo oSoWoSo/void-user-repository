@@ -5,21 +5,12 @@ revision=1
 build_style=go
 go_import_path="code.forgejo.org/forgejo/runner/v12"
 hostmakedepends="go git"
-makedepends=""
-depends=""
-checkdepends="docker"
+#checkdepends="docker"
 short_desc="Continuous integration for Forgejo"
 maintainer="zenobit <zenobit@disroot.org>"
 license="GPL-3.0-or-later"
 homepage="https://code.forgejo.org/forgejo/runner"
-#changelog=""
+changelog="https://code.forgejo.org/forgejo/runner/raw/branch/main/RELEASE-NOTES.md"
 distfiles="https://code.forgejo.org/forgejo/runner/archive/v${version}.tar.gz"
 checksum=6804a2e73cdd1fb805a9028e7a3cf63c5bc5d5ca9315f46e22ff99a185c1174f
 make_check=no # Investigating
-
-poost_install() {
-    _build-forgejo-runner-xbps/bin/runner generate-config > config.yaml
-    vconf config.yaml
-    vbin _build-forgejo-runner-xbps/bin/runner forgejo-runner
-	rm _build-forgejo-runner-xbps/bin/runner
-}
