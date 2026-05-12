@@ -46,7 +46,7 @@ generate_list() {
 		_pkg=${_entry%/}
 		_pkg=${_pkg##*/}
 		echo "$_pkg"
-	done | sort)
+	done | sort -f)
 
 	mkdir -p "$(dirname "$TEMPLATES_LIST")"
 	if [ -f "$TEMPLATES_LIST" ] && [ "$new_list" = "$(cat "$TEMPLATES_LIST")" ]; then
@@ -185,7 +185,7 @@ generate_arch_pages() {
 	_pkg_list=$(for _entry in "$SRCPKGS"/*/; do
 		[ -d "$_entry" ] || [ -L "$_entry" ] || continue
 		_p=${_entry%/}; _p=${_p##*/}; echo "$_p"
-	done)
+	done | sort -f)
 
 	_arches='x86_64 x86_64-musl aarch64 aarch64-musl'
 
