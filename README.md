@@ -113,7 +113,7 @@ Create PR
 | hyprsunset | 0.3.3 | https://github.com/hyprwm/hyprsunset | zenobit |  |
 | hyprsysteminfo | 0.1.3 | https://github.com/hyprwm/hyprsysteminfo | zenobit |  |
 | hyprtoolkit | 0.3.0 | https://github.com/hyprwm/hyprtoolkit | zenobit |  |
-| hyprutils | 0.10.2 | https://github.com/hyprwm/hyprutils | zenobit |  |
+| hyprutils | 0.13.1 | https://github.com/hyprwm/hyprutils | zenobit |  |
 | hyprwayland-scanner | 0.4.5 | https://github.com/hyprwm/hyprwayland-scanner | zenobit |  |
 | kairo | 1.6.4 | https://github.com/programmersd21/kairo | nerdyslacker |  |
 | kando | 2.3.0 | https://kando.menu | zenobit | x86_64 aarch64 |
