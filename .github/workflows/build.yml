@@ -152,6 +152,7 @@ on:
         - vbm
         - Vish
         - vtm
+        - wpgtk
         - xdg-desktop-portal-cosmic
         - xdg-desktop-portal-hyprland
         - xut
