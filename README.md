@@ -55,7 +55,7 @@ Create PR
 ## Available templates (packages when built successfully)
 | package | version | homepage | maintainer | notes |
 |:--------|:--------|:---------|:-----------|:------|
-| aquamarine | 0.9.5 | https://github.com/hyprwm/aquamarine | zenobit |  |
+| aquamarine | 0.11.0 | https://github.com/hyprwm/aquamarine | zenobit |  |
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit |  |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno Boland |  |
 | corekeyboard | 5.0.1 | https://gitlab.com/cubocore/coreapps/corekeyboard | zenobit |  |
