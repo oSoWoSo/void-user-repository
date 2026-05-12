@@ -41,7 +41,7 @@ Add your changes
 - When you change any shlib from upstream void-packages, changes my be reflected in `shlibs_remove` and `shlibe_append`
 - When you add new shlib add it to `shlibe_append`
 
-After adding template, run `./update-readme` to regenerate templates list and table
+After adding template, run `./update-repo -u` to regenerate templates list and table
 
 Create PR
 
@@ -90,6 +90,7 @@ Create PR
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
 | gofer | 0.2.0 | https://codeberg.org/JakeAtLinux/Gofer | zenobit |  |
+| gradle | 9.5.0 | https://gradle.org/ | Bnyro |  |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |
 | hyprdynamicmonitors | 1.3.5 | https://github.com/fiffeek/hyprdynamicmonitors | zenobit |  |
 | hyprgraphics | 0.3.0 | https://github.com/hyprwm/hyprgraphics | zenobit |  |
@@ -149,6 +150,7 @@ Create PR
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
+| sdkmanager | 0.7.0 | https://gitlab.com/fdroid/sdkmanager | zenobit |  |
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |

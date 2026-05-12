@@ -17,9 +17,9 @@
 !/.gitignore
 !/.gitmodules
 !/create-web
-!/upload
+
 !/LICENSE
-!/update-readme
+!/update-repo
 !/README.md
 !/shlibs-update
 !/shlibs_append

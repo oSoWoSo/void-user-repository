@@ -1,8 +1,6 @@
 name: Update templatesList and workflow
 on:
   push:
-    #branches:
-    #  - main
     paths:
       - 'srcpkgs/**'
       - '.github/build-REST.yml'
@@ -19,65 +17,16 @@ jobs:
         uses: actions/checkout@v5
         with:
           token: ${{ secrets.WORKFLOWS }}
-          fetch-depth: 2  # shallow clone
-
-      - name: Update templatesList and README
-        run: ./update-readme
-
-      - name: Detect changes
-        id: detect
-        run: |
-          set -e
-          if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
-            echo "==> First commit"
-            ADDED=$(cat .github/templatesList)
-            MODIFIED=""
-            REMOVED=""
-          else
-            DIFF=$(git diff --name-status HEAD~1 HEAD -- srcpkgs)
-            echo "$DIFF"
-            extract_pkg() {
-              cut -d/ -f2
-            }
-            ADDED=$(echo "$DIFF" | awk '$1=="A"{print $2}' | extract_pkg | sort -u)
-            MODIFIED=$(echo "$DIFF" | awk '$1=="M"{print $2}' | extract_pkg | sort -u)
-            REMOVED=$(echo "$DIFF" | awk '$1=="D"{print $2}' | extract_pkg | sort -u)
-          fi
-          ADDED=$(echo "$ADDED" | sed '/^$/d')
-          MODIFIED=$(echo "$MODIFIED" | sed '/^$/d')
-          REMOVED=$(echo "$REMOVED" | sed '/^$/d')
-          ADDED=$(echo "$ADDED" | sort -u)
-          MODIFIED=$(echo "$MODIFIED" | sort -u)
-          REMOVED=$(echo "$REMOVED" | sort -u)
-          ADDED_LIST=$(echo "$ADDED" | tr '\n' ' ' | sed 's/ $//')
-          MODIFIED_LIST=$(echo "$MODIFIED" | tr '\n' ' ' | sed 's/ $//')
-          REMOVED_LIST=$(echo "$REMOVED" | tr '\n' ' ' | sed 's/ $//')
-          echo "added=$ADDED_LIST" >> $GITHUB_OUTPUT
-          echo "modified=$MODIFIED_LIST" >> $GITHUB_OUTPUT
-          echo "removed=$REMOVED_LIST" >> $GITHUB_OUTPUT
-          COMBINED=$(printf "%s\n%s\n" "$ADDED" "$MODIFIED" \
-            | sed '/^$/d' | sort -u | tr '\n' ' ' | sed 's/ $//')
-          echo "templates=$COMBINED" >> $GITHUB_OUTPUT
-          echo "count=$(echo "$COMBINED" | wc -w)" >> $GITHUB_OUTPUT
-          echo "==> A: $ADDED_LIST"
-          echo "==> M: $MODIFIED_LIST"
-          echo "==> D: $REMOVED_LIST"
-          echo "==> Build: $COMBINED"
-
-      - name: Update build workflow
-        run: |
-          cd .github/workflows
-          cp -f ../build-START.yml build.yml
-          while read -r line; do
-            echo "        - $(echo "$line")"
-          done < ../templatesList >> build.yml
-          cat ../build-REST.yml >> build.yml
+          fetch-depth: 2
 
       - name: Install pandoc
         run: sudo apt-get install -y pandoc
 
+      - name: Update repo
+        run: ./update-repo -u
+
       - name: Regenerate website
-        run: ./create-web build "Void Community Repository"
+        run: ./update-repo -w
 
       - name: Push results
         env:
@@ -105,7 +54,7 @@ jobs:
             local old new
             old=$(git show origin/page:"$page_path" 2>/dev/null | sha256sum | cut -d' ' -f1 || echo "")
             new=$(sha256sum < "$src" | cut -d' ' -f1)
-            if [[ "$old" != "$new" ]]; then
+            if [ "$old" != "$new" ]; then
               echo "  Uploading (changed): $page_path"
               curl -s -T "$src" "${WEBDAV}/${dest}" -u ":${SURFER_TOKEN}" \
                 || echo "  Warning: failed to upload $page_path"
@@ -116,14 +65,14 @@ jobs:
 
           echo "==> Uploading changed website assets"
           for file in docs/*; do
-            [[ -f $file ]] || continue
+            [ -f "$file" ] || continue
             fname=$(basename "$file")
             upload_if_changed "$file" "$fname" "$fname"
           done
 
           echo "==> Uploading changed arch pages"
           for arch in x86_64 x86_64-musl aarch64 aarch64-musl; do
-            [[ -f "docs/$arch/index.html" ]] || continue
+            [ -f "docs/$arch/index.html" ] || continue
             curl -s -X MKCOL "${WEBDAV}/${arch}/" -u ":${SURFER_TOKEN}" || true
             upload_if_changed "docs/$arch/index.html" "${arch}/index.html" "${arch}/index.html"
           done

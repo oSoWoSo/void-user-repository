@@ -1,0 +1,375 @@
+#!/bin/sh
+#
+# Discover templates, update templatesList, README, build.yml, website,
+# and upload built packages to the repository.
+#
+# Author: zenobit <zenobit@disroot.org>
+# License: GPL-3.0-only
+
+SRCPKGS='srcpkgs'
+TEMPLATES_LIST='.github/templatesList'
+README='README.md'
+WORKFLOW='.github/workflows/build.yml'
+BUILD_START='.github/build-START.yml'
+BUILD_REST='.github/build-REST.yml'
+
+SURFER_URL="https://repo.osowoso.org"
+SIGNED_BY="zenobit <zenobit@disroot.org>"
+SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+
+usage() {
+	prog=${0##*/}
+	cat <<-EOF
+	Usage: $prog -u | -w | -h
+	       $prog -p | -h
+
+	Manage repository: templates, README, build.yml, website, and packages.
+
+	Options
+	  -u   update list, README, and build.yml
+	  -w   regenerate website (requires pandoc)
+	  -p   upload built packages to WebDAV repository
+	  -h   print this message and exit
+	EOF
+}
+
+fatal() {
+	echo '[FATAL]' "$@" >&2
+	exit 1
+}
+
+# --- Update ---
+
+generate_list() {
+	new_list=$(for _entry in "$SRCPKGS"/*/; do
+		[ -d "$_entry" ] || [ -L "$_entry" ] || continue
+		_pkg=${_entry%/}
+		_pkg=${_pkg##*/}
+		echo "$_pkg"
+	done | sort)
+
+	mkdir -p "$(dirname "$TEMPLATES_LIST")"
+	if [ -f "$TEMPLATES_LIST" ] && [ "$new_list" = "$(cat "$TEMPLATES_LIST")" ]; then
+		echo 'templatesList: no changes'
+	else
+		echo "$new_list" > "$TEMPLATES_LIST"
+		echo 'templatesList: updated'
+	fi
+}
+
+generate_readme() {
+	_tmp=$(mktemp)
+
+	awk '/^## Available/{exit} {print}' "$README" > "$_tmp"
+
+	{
+		echo '## Available templates (packages when built successfully)'
+		echo '| package | version | homepage | maintainer | notes |'
+		echo '|:--------|:--------|:---------|:-----------|:------|'
+		while IFS= read -r _pkg; do
+			_tpl="$SRCPKGS/$_pkg/template"
+			[ -f "$_tpl" ] || continue
+			_homepage=$(grep '^homepage='    "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+			_version=$(grep  '^version='     "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+			_maintainer=$(grep '^maintainer=' "$_tpl" | head -n 1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
+			_notes=$(grep    '^archs='       "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+			echo "| $_pkg | $_version | $_homepage | $_maintainer | $_notes |"
+		done < "$TEMPLATES_LIST"
+	} >> "$_tmp"
+
+	mv "$_tmp" "$README"
+	echo "README: updated"
+}
+
+generate_build_yml() {
+	[ -f "$BUILD_START" ]   || fatal "not found: ${BUILD_START}"
+	[ -f "$BUILD_REST" ]    || fatal "not found: ${BUILD_REST}"
+	[ -f "$TEMPLATES_LIST" ] || fatal "not found: ${TEMPLATES_LIST}"
+
+	mkdir -p "$(dirname "$WORKFLOW")"
+	cat "$BUILD_START" > "$WORKFLOW"
+	while IFS= read -r _pkg; do
+		[ -z "$_pkg" ] && continue
+		echo "        - $_pkg"
+	done < "$TEMPLATES_LIST" >> "$WORKFLOW"
+	cat "$BUILD_REST" >> "$WORKFLOW"
+
+	echo "build.yml: updated"
+}
+
+detect_changes() {
+	if ! git rev-parse HEAD~1 >/dev/null 2>&1; then
+		echo '==> First commit'
+		_added=$(cat "$TEMPLATES_LIST")
+		_modified=''
+		_removed=''
+	else
+		_diff=$(git diff --name-status HEAD~1 HEAD -- "$SRCPKGS")
+		_added=$(   echo "$_diff" | awk '$1=="A"{print $2}' | cut -d/ -f2 | sort -u)
+		_modified=$(echo "$_diff" | awk '$1=="M"{print $2}' | cut -d/ -f2 | sort -u)
+		_removed=$( echo "$_diff" | awk '$1=="D"{print $2}' | cut -d/ -f2 | sort -u)
+	fi
+
+	_added=$(echo "$_added"     | sed '/^$/d')
+	_modified=$(echo "$_modified" | sed '/^$/d')
+	_removed=$(echo "$_removed"   | sed '/^$/d')
+
+	echo "==> Added:   $(echo "$_added" | tr '\n' ' ')"
+	echo "==> Modified: $(echo "$_modified" | tr '\n' ' ')"
+	echo "==> Removed: $(echo "$_removed" | tr '\n' ' ')"
+}
+
+# --- Web ---
+
+regenerate_web() {
+	if [ ! -x ./create-web ]; then
+		echo "create-web: not found, skipping website"
+		return
+	fi
+	if ! command -v pandoc >/dev/null 2>&1; then
+		echo "pandoc: not installed, skipping website"
+		return
+	fi
+	./create-web build "Void Community Repository"
+	generate_arch_pages
+}
+
+# --- Upload ---
+
+fetch_remote_list() {
+	curl -s -X PROPFIND "${1}/" \
+		-H 'Depth: 1' \
+		-u ":${SURFER_TOKEN}" 2>/dev/null \
+		| grep -o '<D:href>[^<]*\.xbps</D:href>' \
+		| sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true
+}
+
+delete_remote() {
+	curl -s -X DELETE "${1}" -u ":${SURFER_TOKEN}" || true
+}
+
+upload_file() {
+	_file="$1" _dest="$2"
+	echo "  Uploading: $(basename "$_file")"
+	curl -s -T "$_file" "$_dest" -u ":${SURFER_TOKEN}" \
+		|| echo "  Warning: failed to upload $(basename "$_file")"
+}
+
+pkg_name() {
+	_without_arch="${1%.*}"
+	_ver=$(printf '%s' "$_without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
+	printf '%s' "${_without_arch%-${_ver}}"
+}
+
+pkg_arch_ok() {
+	_pkg="$1" _target="$2"
+	_tpl="${SRCPKGS}/${_pkg}/template"
+	[ -f "$_tpl" ] || return 0
+	_archs=$(grep -m1 '^archs=' "$_tpl" | sed 's/^archs=//;s/"//g')
+	[ -z "$_archs" ] && return 0
+	_last=''
+	for _pat in $_archs; do
+		_last="$_pat"
+		case "$_target" in
+			${_pat#~}) case "$_pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
+		esac
+	done
+	case "$_last" in ~*) return 0 ;; esac
+	return 1
+}
+
+generate_arch_pages() {
+	_template="${SCRIPT_DIR}/.github/arch-index-template.html"
+	[ -f "$_template" ] || { echo "arch-index-template.html not found, skipping arch pages"; return 1; }
+
+	_pkg_list=$(for _entry in "$SRCPKGS"/*/; do
+		[ -d "$_entry" ] || [ -L "$_entry" ] || continue
+		_p=${_entry%/}; _p=${_p##*/}; echo "$_p"
+	done)
+
+	_arches='x86_64 x86_64-musl aarch64 aarch64-musl'
+
+	for _arch in $_arches; do
+		_out_dir="${SCRIPT_DIR}/docs/${_arch}"
+		_out="${_out_dir}/index.html"
+		_repo_url="${SURFER_URL}/${_arch}"
+
+		mkdir -p "$_out_dir"
+
+		_nav_tmp=$(mktemp)
+		_pkg_tmp=$(mktemp)
+		_svg_tmp=$(mktemp)
+
+		for _a in $_arches; do
+			if [ "$_a" = "$_arch" ]; then
+				printf '  <li><a href="." class="active">%s</a></li>\n' "$_arch" >> "$_nav_tmp"
+			else
+				printf '  <li><a href="../%s/">%s</a></li>\n' "$_a" "$_a" >> "$_nav_tmp"
+			fi
+		done
+
+		{
+			printf '<table>\n<thead><tr>\n'
+			printf '  <th>package</th><th>version</th><th>homepage</th><th>maintainer</th><th>description</th>\n'
+			printf '</tr></thead>\n<tbody>\n'
+
+			_pkg_count=0
+			for _pkg in $_pkg_list; do
+				pkg_arch_ok "$_pkg" "$_arch" || continue
+				_tpl="${SRCPKGS}/${_pkg}/template"
+				[ -f "$_tpl" ] || continue
+
+				_version=$(grep '^version='    "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+				_homepage=$(grep '^homepage='   "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+				_maintainer=$(grep '^maintainer=' "$_tpl" | head -n 1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
+				_short_desc=$(grep '^short_desc=' "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+
+				printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td></tr>\n' \
+					"$_pkg" "$_version" "$_homepage" "$_homepage" "$_maintainer" "$_short_desc"
+				_pkg_count=$((_pkg_count + 1))
+			done
+
+			printf '</tbody>\n</table>\n'
+		} > "$_pkg_tmp"
+
+		cp "${SCRIPT_DIR}/src/svg-color.html" "$_svg_tmp" 2>/dev/null || touch "$_svg_tmp"
+
+		sed \
+			-e "s|__ARCH__|${_arch}|g" \
+			-e 's|__CSS_URL__|../style.css|g' \
+			-e 's|__HOME_URL__|../index.html|g' \
+			-e "s|__REPO_URL__|${_repo_url}|g" \
+			-e "s|__GIT_CI_URL__|${REPO_URL:-${SURFER_URL}}|g" \
+			-e 's|__FAVICON__|<link rel="icon" href="../favicon.ico" />|g' \
+			"$_template" \
+		| awk \
+			-v nav="$_nav_tmp" \
+			-v tbl="$_pkg_tmp" \
+			-v svg="$_svg_tmp" \
+			'/__NAV_ARCH_LINKS__/ { while ((getline ln < nav) > 0) print ln; close(nav); next }
+			 /__PACKAGE_TABLE__/  { while ((getline ln < tbl) > 0) print ln; close(tbl); next }
+			 /__SVGCOLOR__/       { while ((getline ln < svg) > 0) print ln; close(svg); next }
+			 { print }' \
+		> "$_out"
+
+		rm -f "$_nav_tmp" "$_pkg_tmp" "$_svg_tmp"
+		echo "  Generated ($_pkg_count packages): docs/${_arch}/index.html"
+	done
+}
+
+do_upload() {
+	[ -n "$ARCH" ]         || fatal 'ARCH is required'
+	[ -n "$SURFER_TOKEN" ] || fatal 'SURFER_TOKEN is required'
+	[ -n "$PRIV_KEY" ]     || fatal 'PRIV_KEY is required'
+
+	_builddir="${BUILDDIR:-$(pwd)}"
+	_webdav="${SURFER_URL}/_webdav/${ARCH}"
+
+	if ! ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
+		echo 'No packages to upload'
+		return 0
+	fi
+
+	_work_dir=$(mktemp -d)
+
+	curl -s -X MKCOL "${_webdav}/" -u ":${SURFER_TOKEN}" || true
+
+	echo '==> Fetching remote package list'
+	_remote_list=$(fetch_remote_list "$_webdav")
+
+	cd "$_work_dir" || fatal "Cannot cd to $_work_dir"
+
+	echo '==> Downloading repodata'
+	curl -sf -o "${ARCH}-repodata" "${SURFER_URL}/${ARCH}/${ARCH}-repodata" \
+		-u ":${SURFER_TOKEN}" 2>/dev/null || true
+
+	cp "${_builddir}"/*.xbps . 2>/dev/null || true
+	cp "${_builddir}"/*.xbps.sig2 . 2>/dev/null || true
+
+	echo '==> Cleaning old package versions from remote'
+	for _new_pkg in "${_builddir}"/*.xbps; do
+		[ -f "$_new_pkg" ] || continue
+		_new_basename=$(basename "$_new_pkg")
+		_name=$(pkg_name "${_new_basename%.xbps}")
+
+		_fmt_list=$(printf '%s\n' $_remote_list)
+		echo "$_fmt_list" | grep "^${_name}-[0-9]" | while IFS= read -r _old_pkg; do
+			[ "$_old_pkg" = "$_new_basename" ] && continue
+			echo "  Deleting old: $_old_pkg"
+			delete_remote "${_webdav}/${_old_pkg}"
+			delete_remote "${_webdav}/${_old_pkg}.sig2"
+		done
+	done
+
+	if [ -n "$REMOVED" ]; then
+		echo "==> Removing packages for deleted templates: $REMOVED"
+		for _pkg in $REMOVED; do
+			_fmt_list=$(printf '%s\n' $_remote_list)
+			echo "$_fmt_list" | grep "^${_pkg}-[0-9]" | while IFS= read -r _old_pkg; do
+				echo "  Removing: $_old_pkg"
+				if curl -sf -o "$_old_pkg" "${SURFER_URL}/${ARCH}/${_old_pkg}" \
+						-u ":${SURFER_TOKEN}" 2>/dev/null; then
+					xbps-rindex -r . "$_old_pkg" || true
+					rm -f "$_old_pkg" "${_old_pkg}.sig2"
+				fi
+				delete_remote "${_webdav}/${_old_pkg}"
+				delete_remote "${_webdav}/${_old_pkg}.sig2"
+			done
+		done
+	fi
+
+	echo '==> Updating repository index'
+	xbps-rindex -a ./*.xbps 2>/dev/null || true
+
+	echo '==> Signing repository'
+	printf '%s\n' "$PRIV_KEY" > private.pem
+	chmod 600 private.pem
+	xbps-rindex -s --signedby "$SIGNED_BY" --privkey private.pem "$PWD"
+	rm -f private.pem
+
+	echo '==> Uploading to Surfer'
+	for _file in ./*.xbps ./*.xbps.sig2 ./*-repodata; do
+		[ -f "$_file" ] || continue
+		_fname=$(basename "$_file")
+		upload_file "$_file" "${_webdav}/${_fname}"
+	done
+
+	rm -rf "$_work_dir"
+	echo "==> Done: ${SURFER_URL}/${ARCH}/"
+}
+
+# --- Main ---
+
+main() {
+	_opt='' OPTIND=1 OPTARG=''
+	_do_update='' _do_packages='' _do_web=''
+	while getopts 'hupw' _opt; do
+		case "$_opt" in
+			h) usage; return 0 ;;
+			u) _do_update=1 ;;
+			p) _do_packages=1 ;;
+			w) _do_web=1 ;;
+			*) usage >&2; return 1 ;;
+		esac
+	done
+
+	[ "$_do_update$_do_packages$_do_web" = 1 ] || { usage >&2; return 1; }
+
+	[ -d "$SRCPKGS" ] || { usage >&2; fatal "srcpkgs directory not found: ${SRCPKGS}"; }
+
+	if [ "$_do_update" = 1 ]; then
+		[ -f "$README" ] || fatal "README not found: ${README}"
+		generate_list
+		generate_readme
+		generate_build_yml
+		detect_changes
+	fi
+	if [ "$_do_packages" = 1 ]; then
+		do_upload
+	fi
+	if [ "$_do_web" = 1 ]; then
+		regenerate_web
+	fi
+}
+
+main "$@"

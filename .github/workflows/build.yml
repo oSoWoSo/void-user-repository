@@ -26,7 +26,6 @@ on:
         type: choice
         options:
         -
-        - Vish
         - aquamarine
         - brow6el
         - btrfs-progs
@@ -55,13 +54,16 @@ on:
         - cosmic-settings-daemon
         - cosmic-term
         - cosmic-theme-editor
+        - cosmic-tweaks
         - cosmic-wallpapers
         - cosmic-workspaces-epoch
         - desktop-tui
         - drako
+        - forgejo-runner
         - gh-lazy
         - glaze
         - gofer
+        - gradle
         - hyprcursor
         - hyprdynamicmonitors
         - hyprgraphics
@@ -88,26 +90,46 @@ on:
         - lunasvg
         - ly
         - menu-themes
+        - mesa-amber
         - nebula-gtk
+        - nwg-clipman
+        - nwg-displays
+        - nwg-dock
+        - nwg-drawer
+        - nwg-hello
+        - nwg-icon-picker
+        - nwg-menu
+        - nwg-panel
+        - nwg-readme-browser
+        - nwg-shell
+        - nwg-shell-config
+        - nwg-shell-wallpapers
         - pop-fonts
         - pop-icons
         - pop-launcher
         - pop-sounds-theme
-        - python3-PyGithub
         - python3-anysqlite
+        - python3-dasbus
+        - python3-geographiclib
+        - python3-geopy
         - python3-hishel
         - python3-inline-snapshot
         - python3-linkify-it-py
+        - python3-PyGithub
         - python3-textual
         - python3-uc-micro-py
         - quickemu
+        - quickosdl
         - rgc
         - runkit
         - sdbus-cpp
+        - sdkmanager
         - shattered-pixel-dungeon
         - tdf
         - tomlplusplus
+        - undelete-btrfs
         - vbm
+        - Vish
         - vtm
         - xdg-desktop-portal-cosmic
         - xdg-desktop-portal-hyprland
@@ -507,5 +529,5 @@ jobs:
         run: |
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          "${GITHUB_WORKSPACE}/extra/upload"
+          "${GITHUB_WORKSPACE}/extra/update-repo" -p
           echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY

@@ -35,6 +35,7 @@ forgejo-runner
 gh-lazy
 glaze
 gofer
+gradle
 hyprcursor
 hyprdynamicmonitors
 hyprgraphics
@@ -94,6 +95,7 @@ quickosdl
 rgc
 runkit
 sdbus-cpp
+sdkmanager
 shattered-pixel-dungeon
 tdf
 tomlplusplus
