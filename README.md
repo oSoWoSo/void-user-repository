@@ -105,7 +105,7 @@ Create PR
 | hyprland-guiutils | 0.1.0 | https://github.com/hyprwm/hyprland-guiutils | zenobit |  |
 | hyprland-protocols | 0.7.0 | https://github.com/hyprwm/hyprland-protocols | zenobit |  |
 | hyprland-qt-support | 0.1.0 | https://github.com/hyprwm/hyprland-qt-support | zenobit |  |
-| hyprlang | 0.6.4 | https://github.com/hyprwm/hyprlang | zenobit |  |
+| hyprlang | 0.6.8 | https://github.com/hyprwm/hyprlang | zenobit |  |
 | hyprlock | 0.9.2 | https://github.com/hyprwm/hyprlock | zenobit |  |
 | hyprmoncfg | 1.4.2 | https://github.com/crmne/hyprmoncfg/ | zenobit |  |
 | hyprpaper | 0.7.6 | https://github.com/hyprwm/hyprpaper | zenobit |  |
