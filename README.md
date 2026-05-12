@@ -92,7 +92,7 @@ Create PR
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | forgejo-runner | 12.10.1 | https://code.forgejo.org/forgejo/runner | zenobit |  |
 | gama | 1.2.1 | https://github.com/termkit/gama | zenobit |  |
-| gh-dash | 4.23.2 | https://github.com/dlvhdr/gh-dash | zenobit |  |
+| gh-dash | 4.24.0 | https://github.com/dlvhdr/gh-dash | zenobit |  |
 | gh-lazy | 0.6.6 | https://github.com/gizmo385/gh-lazy | zenobit |  |
 | glaze | 7.6.0 | https://github.com/stephenberry/glaze | zenobit |  |
 | gofer | 0.2.0 | https://codeberg.org/JakeAtLinux/Gofer | zenobit |  |
