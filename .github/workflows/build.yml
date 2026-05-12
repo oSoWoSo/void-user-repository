@@ -89,6 +89,7 @@ on:
         - hyprland-qt-support
         - hyprlang
         - hyprlock
+        - hyprmoncfg
         - hyprpaper
         - hyprpicker
         - hyprpolkitagent
