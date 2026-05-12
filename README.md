@@ -86,6 +86,7 @@ Create PR
 | cosmic-tweaks | 0.2.2 | https://github.com/cosmic-utils/cosmic-tweaks | Bella Viola Wagner | x86_64 |
 | cosmic-wallpapers | 1.0.12 | https://github.com/pop-os/cosmic-wallpapers | Bella Wagner |  |
 | cosmic-workspaces-epoch | 1.0.12 | https://github.com/pop-os/cosmic-workspaces-epoch | Bella Wagner | x86_64* i686 |
+| cwal | 0.8.5 | https://github.com/nitinbhat972/cwal | zenobit |  |
 | desktop-tui | 0.3.2 | https://github.com/Julien-cpsn/desktop-tui | zenobit |  |
 | distrobox | 1.8.2.5 | https://distrobox.it/ | zenobit |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |

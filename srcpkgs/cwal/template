@@ -1,0 +1,13 @@
+# Template file for 'cwal'
+pkgname=cwal
+version=0.8.5
+revision=1
+build_style=cmake
+hostmakedepends="pkg-config"
+makedepends="libmagick-devel libimagequant-devel LuaJIT-devel"
+short_desc="Blazing-fast pywal-like color palette generator written in C"
+maintainer="zenobit <zenobit@disroot.org>"
+license="GPL-3.0-only"
+homepage="https://github.com/nitinbhat972/cwal"
+distfiles="https://github.com/nitinbhat972/cwal/archive/refs/tags/v${version}.tar.gz"
+checksum=833eb641368061c5ea453cbde25e3175e3e32cfb68842e92290209f4bf99f459
