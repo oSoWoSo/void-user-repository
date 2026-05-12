@@ -73,6 +73,7 @@ on:
         - distrobox
         - drako
         - forgejo-runner
+        - gama
         - gh-dash
         - gh-lazy
         - glaze
