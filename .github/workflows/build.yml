@@ -101,6 +101,7 @@ on:
         - hyprwayland-scanner
         - kairo
         - kando
+        - kew
         - libcprime
         - libspng
         - linuxcommandlibrary
