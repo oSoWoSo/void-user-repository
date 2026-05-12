@@ -92,7 +92,7 @@ jobs:
           git push || echo "Nothing to push"
           git status
 
-      - name: Upload changed website assets to Surfer
+      - name: Upload changed website assets
         env:
           SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
         run: |
@@ -114,14 +114,14 @@ jobs:
             fi
           }
 
-          echo "==> Uploading changed website assets to Surfer"
+          echo "==> Uploading changed website assets"
           for file in docs/*; do
             [[ -f $file ]] || continue
             fname=$(basename "$file")
             upload_if_changed "$file" "$fname" "$fname"
           done
 
-          echo "==> Uploading changed arch pages to Surfer"
+          echo "==> Uploading changed arch pages"
           for arch in x86_64 x86_64-musl aarch64 aarch64-musl; do
             [[ -f "docs/$arch/index.html" ]] || continue
             curl -s -X MKCOL "${WEBDAV}/${arch}/" -u ":${SURFER_TOKEN}" || true

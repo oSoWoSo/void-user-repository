@@ -17,7 +17,7 @@
 !/.gitignore
 !/.gitmodules
 !/create-web
-!/surfer-upload
+!/upload
 !/LICENSE
 !/update-readme
 !/README.md

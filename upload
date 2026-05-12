@@ -121,7 +121,7 @@ build-arch-page() {
 			printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td></tr>\n' \
 				"$pkgname" "$version" "$homepage" "$homepage" "$maintainer" "$short_desc"
 			pkg_count=$((pkg_count + 1))
-		done < <(XBPS_ARCH="$arch" xbps-query -r "$work_dir" -s "*" 2>/dev/null | sort)
+		done < <(XBPS_ARCH="$arch" xbps-query --repository="$work_dir" -Rs "*" 2>/dev/null | sort)
 
 		printf '</tbody>\n</table>\n'
 	} > "$pkg_tmp"
