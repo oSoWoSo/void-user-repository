@@ -91,7 +91,7 @@ Create PR
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | forgejo-runner | 12.10.1 | https://code.forgejo.org/forgejo/runner | zenobit |  |
 | gh-lazy | 0.6.4 | https://github.com/gizmo385/gh-lazy | zenobit |  |
-| glaze | 6.0.3 | https://github.com/stephenberry/glaze | zenobit |  |
+| glaze | 7.6.0 | https://github.com/stephenberry/glaze | zenobit |  |
 | gofer | 0.2.0 | https://codeberg.org/JakeAtLinux/Gofer | zenobit |  |
 | gradle | 9.5.0 | https://gradle.org/ | Bnyro |  |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |
