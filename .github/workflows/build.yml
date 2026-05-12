@@ -142,6 +142,7 @@ on:
         - tdf
         - tomlplusplus
         - tufw
+        - typobuster
         - undelete-btrfs
         - vbm
         - Vish
