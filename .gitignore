@@ -16,7 +16,6 @@
 # Files
 !/.gitignore
 !/.gitmodules
-!/create-web
 
 !/LICENSE
 !/update-repo

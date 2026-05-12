@@ -1,10 +1,12 @@
 #!/bin/sh
 #
-# Discover templates, update templatesList, README, build.yml, website,
-# and upload built packages to the repository.
+# Manage repository: templates, README, build.yml, website, and packages.
+# Merged from update-repo + create-web.
 #
 # Author: zenobit <zenobit@disroot.org>
 # License: GPL-3.0-only
+
+[ -f .env ] && . .env
 
 SRCPKGS='srcpkgs'
 TEMPLATES_LIST='.github/templatesList'
@@ -16,26 +18,135 @@ BUILD_REST='.github/build-REST.yml'
 SURFER_URL="https://repo.osowoso.org"
 SIGNED_BY="zenobit <zenobit@disroot.org>"
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
+ARCHES='x86_64 x86_64-musl aarch64 aarch64-musl'
 
-usage() {
-	prog=${0##*/}
-	cat <<-EOF
-	Usage: $prog -u | -w | -h
-	       $prog -p | -h
+# --- UI helpers (ANSI) ---
 
-	Manage repository: templates, README, build.yml, website, and packages.
-
-	Options
-	  -u   update list, README, and build.yml
-	  -w   regenerate website (requires pandoc)
-	  -p   upload built packages to WebDAV repository
-	  -h   print this message and exit
-	EOF
+if [ -z "$NO_COLOR" ]; then
+	RED=$(printf '\033[0;31m')
+	GREEN=$(printf '\033[0;32m')
+	YELLOW=$(printf '\033[1;33m')
+	BLUE=$(printf '\033[0;34m')
+	NC=$(printf '\033[0m')
+fi
+_r()  { echo "${RED}${1}${NC}"; }
+_re() { echo "${RED}${1}${NC}" >&2; exit 1; }
+_g()  { echo "${GREEN}${1}${NC}"; }
+_b()  { echo "${BLUE}${1}${NC}"; }
+_y()  { echo "${YELLOW}${1}${NC}"; }
+ask() {
+	_y "Press Enter to continue (Ctrl+C to quit)..."
+	echo "$1"
+	read -r _key || true
 }
+
+# --- Core helpers ---
 
 fatal() {
 	echo '[FATAL]' "$@" >&2
 	exit 1
+}
+
+usage() {
+	prog=${0##*/}
+	cat <<-EOF
+	Usage: $prog -h | -u | -w | -p | -s | -a
+	       $prog {update|build|upload|serve|archs|help}
+
+	Manage repository: templates, README, build.yml, website, and packages.
+
+	Options
+	  -u, --update     update list, README, and build.yml
+	  -w, --build      regenerate website (requires pandoc)
+	  -p, --upload     upload built packages to WebDAV repository
+	  -s, --serve      serve website locally on port 8000
+	  -a, --archs      regenerate architecture pages only
+	  -h, --help       print this message
+
+	Compound: $prog -uw   (update + build)
+	EOF
+}
+
+# --- Package helpers ---
+
+pkg_name() {
+	_without_arch="${1%.*}"
+	_ver=$(printf '%s' "$_without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
+	printf '%s' "${_without_arch%-${_ver}}"
+}
+
+pkg_arch_ok() {
+	_pkg="$1" _target="$2"
+	_tpl="${SRCPKGS}/${_pkg}/template"
+	[ -f "$_tpl" ] || return 0
+	_archs=$(grep -m1 '^archs=' "$_tpl" | sed 's/^archs=//;s/"//g')
+	[ -z "$_archs" ] && return 0
+	_last=''
+	for _pat in $_archs; do
+		_last="$_pat"
+		case "$_target" in
+			${_pat#~}) case "$_pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
+		esac
+	done
+	case "$_last" in ~*) return 0 ;; esac
+	return 1
+}
+
+fetch_remote_list() {
+	curl -s -X PROPFIND "${1}/" \
+		-H 'Depth: 1' \
+		-u ":${SURFER_TOKEN}" 2>/dev/null \
+		| grep -o '<D:href>[^<]*\.xbps</D:href>' \
+		| sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true
+}
+
+delete_remote() {
+	curl -s -X DELETE "${1}" -u ":${SURFER_TOKEN}" || true
+}
+
+upload_file() {
+	_file="$1" _dest="$2"
+	echo "  Uploading: $(basename "$_file")"
+	curl -s -T "$_file" "$_dest" -u ":${SURFER_TOKEN}" \
+		|| echo "  Warning: failed to upload $(basename "$_file")"
+}
+
+# --- Website helpers (from create-web) ---
+
+_build_main_index() {
+	_title="${1:-Void Community Repository}"
+
+	_nav_arch_tmp=$(mktemp)
+	_readme_tmp=$(mktemp)
+	_svg_tmp=$(mktemp)
+
+	for _arch in $ARCHES; do
+		printf '  <li><a href="%s/">%s</a></li>\n' "$_arch" "$_arch" >> "$_nav_arch_tmp"
+	done
+	printf '  <li><a href="https://codeberg.org/osowoso/oco">&#x2934; source</a></li>\n' >> "$_nav_arch_tmp"
+	if [ -n "${REPO_URL:-}" ]; then
+		printf '  <li><a href="%s">CI</a></li>\n' "$REPO_URL" >> "$_nav_arch_tmp"
+	fi
+
+	pandoc README.md -f gfm > "$_readme_tmp"
+	cp src/svg-color.html "$_svg_tmp"
+
+	sed \
+		-e "s|__CSS_URL__|style.css|g" \
+		-e 's|__FAVICON__|<link rel="icon" href="favicon.ico" />|g' \
+		.github/main-index-template.html \
+	| awk \
+		-v nav_arch="$_nav_arch_tmp" \
+		-v readme="$_readme_tmp" \
+		-v svg="$_svg_tmp" \
+		'/__NAV_ARCH_LINKS__/ { while ((getline ln < nav_arch) > 0) print ln; close(nav_arch); next }
+		 /__README_CONTENT__/  { while ((getline ln < readme)   > 0) print ln; close(readme);   next }
+		 /__SVGCOLOR__/        { while ((getline ln < svg)      > 0) print ln; close(svg);       next }
+		 { print }' \
+	> "docs/index.html"
+
+	rm -f "$_nav_arch_tmp" "$_readme_tmp" "$_svg_tmp"
+	_g "Generated: docs/index.html"
 }
 
 # --- Update ---
@@ -121,61 +232,24 @@ detect_changes() {
 
 # --- Web ---
 
-regenerate_web() {
-	if [ ! -x ./create-web ]; then
-		echo "create-web: not found, skipping website"
-		return
-	fi
+build_site() {
+	_title="${1:-Void Community Repository}"
+
 	if ! command -v pandoc >/dev/null 2>&1; then
 		echo "pandoc: not installed, skipping website"
 		return
 	fi
-	./create-web build "Void Community Repository"
+
+	if [ -f docs/CNAME ]; then
+		cp docs/CNAME src/
+	fi
+	rm -rf docs && mkdir -p docs
+	cp -r src/* docs/
+	rm -f docs/toggle.html docs/toc.html docs/svg-color.html docs/footer.html
+
+	_build_main_index "$_title"
 	generate_arch_pages
-}
-
-# --- Upload ---
-
-fetch_remote_list() {
-	curl -s -X PROPFIND "${1}/" \
-		-H 'Depth: 1' \
-		-u ":${SURFER_TOKEN}" 2>/dev/null \
-		| grep -o '<D:href>[^<]*\.xbps</D:href>' \
-		| sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true
-}
-
-delete_remote() {
-	curl -s -X DELETE "${1}" -u ":${SURFER_TOKEN}" || true
-}
-
-upload_file() {
-	_file="$1" _dest="$2"
-	echo "  Uploading: $(basename "$_file")"
-	curl -s -T "$_file" "$_dest" -u ":${SURFER_TOKEN}" \
-		|| echo "  Warning: failed to upload $(basename "$_file")"
-}
-
-pkg_name() {
-	_without_arch="${1%.*}"
-	_ver=$(printf '%s' "$_without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
-	printf '%s' "${_without_arch%-${_ver}}"
-}
-
-pkg_arch_ok() {
-	_pkg="$1" _target="$2"
-	_tpl="${SRCPKGS}/${_pkg}/template"
-	[ -f "$_tpl" ] || return 0
-	_archs=$(grep -m1 '^archs=' "$_tpl" | sed 's/^archs=//;s/"//g')
-	[ -z "$_archs" ] && return 0
-	_last=''
-	for _pat in $_archs; do
-		_last="$_pat"
-		case "$_target" in
-			${_pat#~}) case "$_pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
-		esac
-	done
-	case "$_last" in ~*) return 0 ;; esac
-	return 1
+	_g "Finished"
 }
 
 generate_arch_pages() {
@@ -187,9 +261,7 @@ generate_arch_pages() {
 		_p=${_entry%/}; _p=${_p##*/}; echo "$_p"
 	done | sort -f)
 
-	_arches='x86_64 x86_64-musl aarch64 aarch64-musl'
-
-	for _arch in $_arches; do
+	for _arch in $ARCHES; do
 		_out_dir="${SCRIPT_DIR}/docs/${_arch}"
 		_out="${_out_dir}/index.html"
 		_repo_url="${SURFER_URL}/${_arch}"
@@ -200,7 +272,7 @@ generate_arch_pages() {
 		_pkg_tmp=$(mktemp)
 		_svg_tmp=$(mktemp)
 
-		for _a in $_arches; do
+		for _a in $ARCHES; do
 			if [ "$_a" = "$_arch" ]; then
 				printf '  <li><a href="." class="active">%s</a></li>\n' "$_arch" >> "$_nav_tmp"
 			else
@@ -256,6 +328,20 @@ generate_arch_pages() {
 		echo "  Generated ($_pkg_count packages): docs/${_arch}/index.html"
 	done
 }
+
+# --- Named targets ---
+
+target_serve() {
+	if [ ! -f docs/index.html ]; then
+		_r "Site not built!"
+		ask 'Build first?' && build_site "$@" || _re "Exiting"
+	fi
+
+	_g 'Press Ctrl+C to stop'
+	python3 -m http.server -d docs 8000
+}
+
+# --- Upload ---
 
 do_upload() {
 	[ -n "$ARCH" ]         || fatal 'ARCH is required'
@@ -341,19 +427,32 @@ do_upload() {
 # --- Main ---
 
 main() {
+	# Map named targets to getopts-style args
+	case "${1:-}" in
+		help|--help)     set -- -h ;;
+		update)          set -- -u ;;
+		build|web)       set -- -w ;;
+		upload|publish)  set -- -p ;;
+		serve)           set -- -s ;;
+		archs)           set -- -a ;;
+	esac
+
 	_opt='' OPTIND=1 OPTARG=''
-	_do_update='' _do_packages='' _do_web=''
-	while getopts 'hupw' _opt; do
+	_do_update='' _do_packages='' _do_web='' _do_archs=''
+	while getopts 'huwpsa' _opt; do
 		case "$_opt" in
 			h) usage; return 0 ;;
 			u) _do_update=1 ;;
-			p) _do_packages=1 ;;
 			w) _do_web=1 ;;
+			p) _do_packages=1 ;;
+			s) target_serve; return 0 ;;
+			a) _do_archs=1 ;;
 			*) usage >&2; return 1 ;;
 		esac
 	done
 
-	[ "$_do_update$_do_packages$_do_web" = 1 ] || { usage >&2; return 1; }
+	[ "$_do_update$_do_packages$_do_web$_do_archs" = 1 ] ||
+		{ usage >&2; return 1; }
 
 	if [ "$_do_update" = 1 ] || [ "$_do_web" = 1 ]; then
 		[ -d "$SRCPKGS" ] || fatal "srcpkgs directory not found: ${SRCPKGS}"
@@ -366,11 +465,14 @@ main() {
 		generate_build_yml
 		detect_changes
 	fi
+	if [ "$_do_web" = 1 ]; then
+		build_site
+	fi
+	if [ "$_do_archs" = 1 ] && [ "$_do_web" != 1 ]; then
+		generate_arch_pages
+	fi
 	if [ "$_do_packages" = 1 ]; then
 		do_upload
-	fi
-	if [ "$_do_web" = 1 ]; then
-		regenerate_web
 	fi
 }
 
