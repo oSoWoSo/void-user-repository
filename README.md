@@ -26,6 +26,8 @@ Pick your architecture there and you will see README.
 ## Structure
 - Main repository with templates on Codeberg https://codeberg.org/oSoWoSo/oco
 - mirror Github repository + CI https://github.com/oSoWoSo/Void_Community_Repository (Here we build binary packages)
+- To make CI quicker we use daily updated Bootstrap Docker images from [oco-builder](https://github.com/oSoWoSo/oco-builder)
+- nocross templates build support (aarch runner)
 - Binary repository https://repo.osowoso.org/
 
 ## How to use
