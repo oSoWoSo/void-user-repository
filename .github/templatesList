@@ -56,6 +56,7 @@ hyprsysteminfo
 hyprtoolkit
 hyprutils
 hyprwayland-scanner
+kairo
 kando
 libcprime
 libspng
@@ -100,6 +101,7 @@ sdkmanager
 shattered-pixel-dungeon
 tdf
 tomlplusplus
+tufw
 undelete-btrfs
 vbm
 Vish
