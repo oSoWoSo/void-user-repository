@@ -108,7 +108,7 @@ Create PR
 | hyprlang | 0.6.4 | https://github.com/hyprwm/hyprlang | zenobit |  |
 | hyprlock | 0.9.2 | https://github.com/hyprwm/hyprlock | zenobit |  |
 | hyprpaper | 0.7.6 | https://github.com/hyprwm/hyprpaper | zenobit |  |
-| hyprpicker | 0.4.5 | https://github.com/hyprwm/hyprpicker | RAR27 |  |
+| hyprpicker | 0.4.7 | https://github.com/hyprwm/hyprpicker | zenobit |  |
 | hyprpolkitagent | 0.1.3 | https://github.com/hyprwm/hyprpolkitagent | zenobit |  |
 | hyprsunset | 0.3.3 | https://github.com/hyprwm/hyprsunset | zenobit |  |
 | hyprsysteminfo | 0.1.3 | https://github.com/hyprwm/hyprsysteminfo | zenobit |  |
