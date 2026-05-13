@@ -1,5 +1,4 @@
-Currently in TESTING mode  
-Don't depend on it yet. PRs welcome 🤗
+# PRs welcome 🤗
 - Void User Repository
 - VUR
 - testing repo
