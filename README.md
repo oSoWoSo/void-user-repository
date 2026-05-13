@@ -138,6 +138,7 @@ Create PR
 | libcprime | 5.0.1 | https://gitlab.com/cubocore/libcprime | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
 | linuxcommandlibrary | 4.0.2 | http://linuxcommandlibrary.com/ | zenobit |  |
+| linuxcommandlibrary-desktop | 4.0.2 | http://linuxcommandlibrary.com/ | zenobit |  |
 | lunasvg | 3.5.0 | https://github.com/sammycage/lunasvg | zenobit |  |
 | ly | 1.4.0 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | menu-themes | 0.8.0 | https://github.com/kando-menu/menu-themes | zenobit |  |
@@ -171,6 +172,7 @@ Create PR
 | python3-uc-micro-py | 2.0.0 | https://github.com/tsutsu3/uc.micro-py | Orphaned |  |
 | quickemu | 4.9.9 | https://github.com/quickemu-project/quickemu | zenobit |  |
 | quickosdl | 0.3.2 | https://github.com/lj3954/quickosdl | zenobit |  |
+| quickshell+ | 0.3.0 | https://quickshell.org | classabbyamp |  |
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |

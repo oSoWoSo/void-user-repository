@@ -105,6 +105,7 @@ on:
         - libcprime
         - libspng
         - linuxcommandlibrary
+        - linuxcommandlibrary-desktop
         - lunasvg
         - ly
         - menu-themes
@@ -138,6 +139,7 @@ on:
         - python3-uc-micro-py
         - quickemu
         - quickosdl
+        - quickshell+
         - rgc
         - runkit
         - sdbus-cpp
