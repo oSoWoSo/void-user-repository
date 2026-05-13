@@ -122,7 +122,7 @@ Create PR
 | kew | 4.0.0 | https://codeberg.org/ravachol/kew | Mihail Ivanchev |  |
 | libcprime | 5.0.1 | https://gitlab.com/cubocore/libcprime | zenobit |  |
 | libspng | 0.7.4 | https://libspng.org/ | zenobit |  |
-| linuxcommandlibrary | 3.3.1 | http://linuxcommandlibrary.com/ | zenobit |  |
+| linuxcommandlibrary | 4.0.2 | http://linuxcommandlibrary.com/ | zenobit |  |
 | lunasvg | 3.5.0 | https://github.com/sammycage/lunasvg | zenobit |  |
 | ly | 1.4.0 | https://codeberg.org/fairyglade/ly | zenobit | i686 x86_64 |
 | menu-themes | 0.8.0 | https://github.com/kando-menu/menu-themes | zenobit |  |
