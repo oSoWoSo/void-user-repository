@@ -80,6 +80,8 @@ on:
         - glaze
         - gofer
         - gradle
+        - helium-browser-arm-bin
+        - helium-browser-bin
         - hyprcursor
         - hyprdynamicmonitors
         - hyprgraphics
