@@ -1,0 +1,24 @@
+# Template file for 'brave-browser-arm-bin'
+pkgname=brave-browser-arm-bin
+version=1.90.122
+revision=1
+archs="aarch64"
+hostmakedepends="rpmextract"
+short_desc="Web browser"
+maintainer="zenobit <zenobit@disroot.org>"
+license="GPL-3.0-or-later"
+homepage="https://www.brave.com/"
+changelog="https://raw.githubusercontent.com/brave/brave-browser/refs/heads/master/CHANGELOG_DESKTOP.md"
+distfiles="https://github.com/brave/brave-browser/releases/download/v${version}/brave-browser-${version}-1.aarch64.rpm"
+checksum=af53f04ecb9062809a50ebb38738427cceb43d9daa0f9c340245449a7cbe9ee9
+
+do_install() {
+	rm -f etc/cron.daily/brave-browser
+	vcopy "*" /
+
+	for size in 16 24 32 48 64 128 256; do
+		vmkdir usr/share/icons/hicolor/${size}x${size}/apps
+		vmove opt/brave.com/brave/product_logo_${size}.png \
+		   usr/share/icons/hicolor/${size}x${size}/apps/brave-browser.png
+	done
+}

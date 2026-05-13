@@ -71,6 +71,8 @@ Create PR
 | package | version | homepage | maintainer | notes |
 |:--------|:--------|:---------|:-----------|:------|
 | aquamarine | 0.11.0 | https://github.com/hyprwm/aquamarine | zenobit |  |
+| brave-browser-arm-bin | 1.90.122 | https://www.brave.com/ | zenobit | aarch64 |
+| brave-browser-bin | 1.90.122 | https://www.brave.com/ | zenobit | x86_64 |
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit |  |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno Boland |  |
 | corekeyboard | 5.0.1 | https://gitlab.com/cubocore/coreapps/corekeyboard | zenobit |  |
