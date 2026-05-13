@@ -69,6 +69,7 @@ on:
         - cosmic-wallpapers
         - cosmic-workspaces-epoch
         - cwal
+        - dashy
         - desktop-tui
         - distrobox
         - drako
