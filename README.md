@@ -1,33 +1,42 @@
 # PRs welcome 🤗
+
+## This is:
+- vOid Community repOsitory (oco)
+- aka
 - Void User Repository
 - VUR
 - testing repo
 - waiting list
 - void unstable
+
+Providing:
+- templates
+- binaries
 - by community
 - for community
 
-Provides:
-- templates
-- binaries
-
 ## DISCLAIMER
-
 This project is **not affiliated with or endorsed by the Void Linux project** or its maintainers.  
 It is an **unofficial community repository** designed to simplify managing and building user-contributed packages using the void-packages build system.  
 Use at your own discretion.
 
 ## Overview
 A collection of template files for building packages on Void Linux.  
-If you dont wish to build the packages locally, https://repo.osowoso.org repository provides prebuilt binaries.  
-Pick your architecture there and you will see README.
+If you dont wish to build the packages locally,  
+https://repo.osowoso.org repository provides prebuilt binaries.  
+Pick your architecture there and you will see
 
 ## Structure
 - Main repository with templates on Codeberg https://codeberg.org/oSoWoSo/oco
 - mirror Github repository + CI https://github.com/oSoWoSo/Void_Community_Repository (Here we build binary packages)
 - To make CI quicker we use daily updated Bootstrap Docker images from [oco-builder](https://github.com/oSoWoSo/oco-builder)
-- nocross templates build support (aarch runner)
+- nocross templates build support (GitHub aarch runner)
 - Binary repository https://repo.osowoso.org/
+
+## What we don't build?
+Browsers: It's waste of energy and when you finish building is maybe already new version out  
+We provide repackaged binaries, they all have `-bin` after <pkgname>  
+(You can use AppImages[AM](https://github.com/ivan-hc/AM) and flatpaks they are usualy always latest)  
 
 ## How to use
 in https://repo.osowoso.org/`(architecture)`  
@@ -37,12 +46,19 @@ Just pick your architecture
 ## How to contribute
 Clone Codeberg repo  
 `git clone https://codeberg.org/oSoWoSo/oco`  
-
-Add your changes
-- When you change any shlib from upstream void-packages, changes my be reflected in `shlibs_remove` and `shlibe_append`
-- When you add new shlib add it to `shlibe_append`
-
-After adding template, run `./update-repo -u` to regenerate templates list and table
+Copy srcpkgs directory to cloned [void-packages](https://github.com/void-linux/void-packages)  
+Use `xnew <pkgname>` to create new template  
+Fill everyhing as needed and remove rest  
+Use `xlint <pkgname>` to lint templates  
+Build templates with tests `./xbps-src -Q pkg <pkgname>`  
+(Tests must be allowed in $XBPS_DISTDIR/etc/conf)  
+We build for x86_64 and aarch64 + musl variants  
+(I am usualy trying x86_64 and aarch64-musl crossbuild)  
+Add your changes  
+When you change any shlib from upstream void-packages, changes must be reflected in `shlibs_remove` and `shlibe_append`  
+When you add new shlib add it only to `shlibe_append`  
+After adding template, run `./update-repo -u` to regenerate templates list and table  
+One commit per template, mesage: `<pkgname> <version>`  
 
 Create PR
 
