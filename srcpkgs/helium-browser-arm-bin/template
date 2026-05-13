@@ -3,7 +3,6 @@ pkgname=helium-browser-arm-bin
 version=0.12.2.1
 revision=1
 archs="aarch64"
-depends="gtk+3 libXScrnSaver nss alsa-lib"
 short_desc="Private, fast, and honest web browser based on Chromium (binary build)"
 maintainer="zenobit <zenobit@disroot.org>"
 license="GPL-3.0-only, BSD-3-Clause"
@@ -14,8 +13,9 @@ checksum=f6651637bec2ba255f3c073c1a7ec516d5433e12b43735081032292a7bb19d14
 do_install() {
 	vmkdir usr/lib/helium-browser
 	vcopy * usr/lib/helium-browser
-	vbin "${FILESDIR}/helium-browser"
-	vinstall "${FILESDIR}/helium-browser.desktop" 644 usr/share/applications
-	vinstall "${FILESDIR}/helium-browser.png" 644 usr/share/pixmaps
+	vmkdir usr/bin
+	ln -s /usr/lib/helium-browser/helium-wrapper ${DESTDIR}/usr/bin/helium
+	vinstall helium.desktop 644 usr/share/applications
+	vinstall product_logo_256.png 644 usr/share/pixmaps/helium.png
 	vlicense "${FILESDIR}/LICENSE.ungoogled_chromium"
 }

@@ -3,7 +3,6 @@ pkgname=helium-browser-bin
 version=0.12.2.1
 revision=1
 archs="x86_64"
-depends="gtk+3 libXScrnSaver nss alsa-lib"
 short_desc="Private, fast, and honest web browser based on Chromium (binary build)"
 maintainer="zenobit <zenobit@disroot.org>"
 license="GPL-3.0-only, BSD-3-Clause"
@@ -14,8 +13,9 @@ checksum=07aa91427e053a20d3f76074d4daf36b4e152d16c48c104bcddf9d1a42f9a23f
 do_install() {
 	vmkdir usr/lib/helium-browser
 	vcopy * usr/lib/helium-browser
-	vbin "${FILESDIR}/helium-browser"
-	vinstall "${FILESDIR}/helium-browser.desktop" 644 usr/share/applications
-	vinstall "${FILESDIR}/helium-browser.png" 644 usr/share/pixmaps
+	vmkdir usr/bin
+	ln -s /usr/lib/helium-browser/helium-wrapper ${DESTDIR}/usr/bin/helium
+	vinstall helium.desktop 644 usr/share/applications
+	vinstall product_logo_256.png 644 usr/share/pixmaps/helium.png
 	vlicense "${FILESDIR}/LICENSE.ungoogled_chromium"
 }
