@@ -1,10 +1,10 @@
 # Template file for 'ftxui'
 pkgname=ftxui
 version=6.1.9
-revision=1
+revision=3
 build_style=cmake
 configure_args="-DFTXUI_BUILD_DOCS=ON -DFTXUI_BUILD_TESTS=OFF"
-hostmakedepends="pkg-config"
+hostmakedepends="pkg-config doxygen graphviz"
 short_desc="C++ Functional Terminal User Interface"
 maintainer="zenobit <zenobit@disroot.org>"
 license="MIT"
@@ -15,4 +15,15 @@ checksum=45819c1e54914783d4a1ca5633885035d74146778a1f74e1213cdb7b76340e71
 
 post_install() {
 	vlicense LICENSE
+}
+
+ftxui-devel_package() {
+	depends="${sourcepkg}>=${version}_${revision}"
+	short_desc+=" - development files"
+	pkg_install() {
+		vmove usr/include
+		vmove usr/lib/cmake
+		vmove usr/lib/pkgconfig
+		vmove "usr/lib/*.a"
+	}
 }
