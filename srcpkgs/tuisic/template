@@ -1,11 +1,11 @@
 # Template file for 'tuisic'
 pkgname=tuisic
 version=2.0.0
-revision=2
+revision=3
 build_style=cmake
 configure_args="-DWITH_MPRIS=ON -Wunused-result=ON"
-hostmakedepends="pkg-config git sdbus-cpp"
-makedepends="mpv-devel libcurl-devel fmt-devel ftxui rapidjson"
+hostmakedepends="pkg-config git"
+makedepends="mpv-devel libcurl-devel fmt-devel ftxui-devel rapidjson sdbus-c++-devel"
 depends="yt-dlp fftw"
 short_desc="TUI online music streaming application"
 maintainer="zenobit <zenobit@disroot.org>"
