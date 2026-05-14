@@ -7,7 +7,7 @@ configure_args="--no-warn-unused-cli -DCMAKE_INSTALL_PREFIX:PATH=/usr -DCMAKE_IN
 hostmakedepends="pkg-config hyprwayland-scanner qt6-base-devel scdoc wayland-protocols"
 makedepends="elogind-devel hyprland-protocols hyprlang hyprutils
  hyprwayland-scanner libgbm-devel libdrm-devel pipewire-devel
- qt6-base-devel qt6-wayland-devel sdbus-cpp wayland-devel"
+ qt6-base-devel qt6-wayland-devel sdbus-c++ wayland-devel"
 depends="xdg-desktop-portal"
 short_desc="Backend of xdg-desktop-portal for Hyprland"
 maintainer="zenobit <zenobit@disroot.org>"

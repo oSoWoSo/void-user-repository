@@ -4,7 +4,6 @@ libhyprlang.so.2 hyprlang-0.6.4_2
 libhyprgraphics.so.2 hyprgraphics-0.3.0_1
 libhyprtoolkit.so.2 hyprtoolkit-0.2.4_1
 libhyprutils.so.12 hyprutils-0.13.1_1
-libsdbus-c++.so.2 sdbus-cpp-2.1.0_1
 libspng.so.0 libspng-0.7.4_1
 libtomlplusplus.so.3 tomlplusplus-3.4.0_1
 libGLESv2.so brow6el-0.3.4_1

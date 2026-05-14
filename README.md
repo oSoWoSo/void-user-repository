@@ -182,7 +182,6 @@ Create PR
 | radicle | 1.8.0 | https://radicle.dev/ | zenobit |  |
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
-| sdbus-cpp | 2.2.1 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
 | sdkmanager | 0.7.0 | https://gitlab.com/fdroid/sdkmanager | zenobit |  |
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |

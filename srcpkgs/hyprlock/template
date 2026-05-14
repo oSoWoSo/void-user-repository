@@ -7,7 +7,7 @@ configure_args="--no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release"
 hostmakedepends="pkg-config hyprwayland-scanner"
 makedepends="cairo-devel elogind-devel file-devel hyprgraphics hyprlang
  hyprutils libdrm-devel libjpeg-turbo-devel libwebp-devel libxkbcommon-devel
- MesaLib-devel pam-devel pango-devel sdbus-cpp wayland-devel wayland-protocols"
+ MesaLib-devel pam-devel pango-devel sdbus-c++ wayland-devel wayland-protocols"
 short_desc="Hyprland's GPU-accelerated screen locking utility"
 maintainer="zenobit <zenobit@disroot.org>"
 license="BSD-3-Clause"
