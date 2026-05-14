@@ -1,7 +1,8 @@
 # Template file for 'brow6el'
 pkgname=brow6el
 version=0.3.4
-revision=5
+revision=6
+archs=x86_64
 build_style=cmake
 hostmakedepends="curl tar pkg-config git"
 makedepends="libsixel-devel libX11-devel libglib-devel nspr-devel nss-devel
