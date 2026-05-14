@@ -111,6 +111,22 @@ upload_file() {
 		|| echo "  Warning: failed to upload $(basename "$_file")"
 }
 
+prune_orphans() {
+	echo '==> Pruning orphan packages (no template in srcpkgs)'
+	for _remote_pkg in $_remote_list; do
+		_pkg=$(pkg_name "${_remote_pkg%.xbps}")
+		[ -d "${SRCPKGS}/${_pkg}" ] && continue
+		echo "  Removing orphan: $_remote_pkg"
+		if curl -sf -o "$_remote_pkg" "${SURFER_URL}/${ARCH}/${_remote_pkg}" \
+				-u ":${SURFER_TOKEN}" 2>/dev/null; then
+			xbps-rindex -r . "$_remote_pkg" || true
+			rm -f "$_remote_pkg" "${_remote_pkg}.sig2"
+		fi
+		delete_remote "${_webdav}/${_remote_pkg}"
+		delete_remote "${_webdav}/${_remote_pkg}.sig2"
+	done
+}
+
 # --- Website helpers (from create-web) ---
 
 _build_main_index() {
@@ -352,11 +368,8 @@ do_upload() {
 	_webdav="${SURFER_URL}/_webdav/${ARCH}"
 
 	if ! ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
-		if [ -z "${REMOVED:-}" ]; then
-			echo 'No packages to upload'
-			return 0
-		fi
-		echo 'No packages to upload, processing removals only'
+		echo 'No packages to upload'
+		return 0
 	fi
 
 	_work_dir=$(mktemp -d)
@@ -390,25 +403,10 @@ do_upload() {
 		done
 	done
 
-	if [ -n "$REMOVED" ]; then
-		echo "==> Removing packages for deleted templates: $REMOVED"
-		for _pkg in $REMOVED; do
-			_fmt_list=$(printf '%s\n' $_remote_list)
-			echo "$_fmt_list" | grep "^${_pkg}-[0-9]" | while IFS= read -r _old_pkg; do
-				echo "  Removing: $_old_pkg"
-				if curl -sf -o "$_old_pkg" "${SURFER_URL}/${ARCH}/${_old_pkg}" \
-						-u ":${SURFER_TOKEN}" 2>/dev/null; then
-					xbps-rindex -r . "$_old_pkg" || true
-					rm -f "$_old_pkg" "${_old_pkg}.sig2"
-				fi
-				delete_remote "${_webdav}/${_old_pkg}"
-				delete_remote "${_webdav}/${_old_pkg}.sig2"
-			done
-		done
-	fi
+	prune_orphans
 
 	echo '==> Updating repository index'
-	ls ./*.xbps >/dev/null 2>&1 && xbps-rindex -a ./*.xbps 2>/dev/null || true
+	xbps-rindex -a ./*.xbps 2>/dev/null || true
 
 	echo '==> Signing repository'
 	printf '%s\n' "$PRIV_KEY" > private.pem
@@ -416,7 +414,7 @@ do_upload() {
 	xbps-rindex -s --signedby "$SIGNED_BY" --privkey private.pem "$PWD"
 	rm -f private.pem
 
-	echo '==> Uploading to Surfer'
+	echo '==> Uploading'
 	for _file in ./*.xbps ./*.xbps.sig2 ./*-repodata; do
 		[ -f "$_file" ] || continue
 		_fname=$(basename "$_file")
