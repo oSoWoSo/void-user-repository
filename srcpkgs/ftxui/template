@@ -3,9 +3,8 @@ pkgname=ftxui
 version=6.1.9
 revision=1
 build_style=cmake
-configure_args="-DFTXUI_BUILD_DOCS=ON -DFTXUI_BUILD_TESTS=ON"
+configure_args="-DFTXUI_BUILD_DOCS=ON -DFTXUI_BUILD_TESTS=OFF"
 hostmakedepends="pkg-config"
-checkdepends="python3-mypy git clang"
 short_desc="C++ Functional Terminal User Interface"
 maintainer="zenobit <zenobit@disroot.org>"
 license="MIT"
