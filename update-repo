@@ -113,9 +113,10 @@ upload_file() {
 
 prune_orphans() {
 	echo '==> Pruning orphan packages (no template in srcpkgs)'
+	_srcpkgs="${SCRIPT_DIR}/${SRCPKGS}"
 	for _remote_pkg in $_remote_list; do
 		_pkg=$(pkg_name "${_remote_pkg%.xbps}")
-		[ -d "${SRCPKGS}/${_pkg}" ] && continue
+		[ -d "${_srcpkgs}/${_pkg}" ] && continue
 		echo "  Removing orphan: $_remote_pkg"
 		if curl -sf -o "$_remote_pkg" "${SURFER_URL}/${ARCH}/${_remote_pkg}" \
 				-u ":${SURFER_TOKEN}" 2>/dev/null; then
