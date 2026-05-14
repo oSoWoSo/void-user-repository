@@ -109,6 +109,7 @@ Create PR
 | distrobox | 1.8.2.5 | https://distrobox.it/ | zenobit |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | forgejo-runner | 12.10.1 | https://code.forgejo.org/forgejo/runner | zenobit |  |
+| ftxui | 6.1.9 | https://github.com/ArthurSonzogni/FTXUI | zenobit |  |
 | gama | 1.2.1 | https://github.com/termkit/gama | zenobit |  |
 | gh-dash | 4.24.0 | https://github.com/dlvhdr/gh-dash | zenobit |  |
 | gh-lazy | 0.6.6 | https://github.com/gizmo385/gh-lazy | zenobit |  |
@@ -181,13 +182,14 @@ Create PR
 | radicle | 1.8.0 | https://radicle.dev/ | zenobit |  |
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
-| sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
+| sdbus-cpp | 2.2.1 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |
 | sdkmanager | 0.7.0 | https://gitlab.com/fdroid/sdkmanager | zenobit |  |
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | tomlplusplus-devel | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | tufw | 0.2.7 | https://github.com/peltho/tufw | zenobit |  |
+| tuisic | 2.0.0 | https://github.com/Dark-Kernel/tuisic | zenobit |  |
 | typobuster | 1.0.0 | https://github.com/nwg-piotr/typobuster | zenobit |  |
 | undelete-btrfs | 1.0 | https://github.com/danthem/undelete-btrfs | zenobit |  |
 | vbm | 1.0.1 | https://codeberg.org/oSoWoSo/vbm | zenobit |  |

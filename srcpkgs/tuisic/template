@@ -1,0 +1,16 @@
+# Template file for 'tuisic'
+pkgname=tuisic
+version=2.0.0
+revision=1
+build_style=cmake
+configure_args="-DWITH_MPRIS=ON -Wunused-result=ON"
+hostmakedepends="pkg-config git sdbus-cpp rapidjson ftxui"
+makedepends="mpv-devel libcurl-devel fmt-devel"
+depends="yt-dlp fftw"
+short_desc="TUI online music streaming application"
+maintainer="zenobit <zenobit@disroot.org>"
+license="GPL-3.0-or-later"
+homepage="https://github.com/Dark-Kernel/tuisic"
+#changelog=""
+distfiles="https://github.com/Dark-Kernel/tuisic/archive/refs/tags/v${version}.tar.gz"
+checksum=548b8ff3553c892bb21d706d74691839a0c409d02988f36ba287d5234935c8fe

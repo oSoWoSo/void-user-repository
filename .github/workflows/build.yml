@@ -76,6 +76,7 @@ on:
         - distrobox
         - drako
         - forgejo-runner
+        - ftxui
         - gama
         - gh-dash
         - gh-lazy
@@ -155,6 +156,7 @@ on:
         - tomlplusplus
         - tomlplusplus-devel
         - tufw
+        - tuisic
         - typobuster
         - undelete-btrfs
         - vbm
