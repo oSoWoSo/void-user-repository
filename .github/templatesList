@@ -106,6 +106,7 @@ python3-uc-micro-py
 quickemu
 quickosdl
 quickshell+
+radicle
 rgc
 runkit
 sdbus-cpp

@@ -178,6 +178,7 @@ Create PR
 | quickemu | 4.9.9 | https://github.com/quickemu-project/quickemu | zenobit |  |
 | quickosdl | 0.3.2 | https://github.com/lj3954/quickosdl | zenobit |  |
 | quickshell+ | 0.3.0 | https://quickshell.org | classabbyamp |  |
+| radicle | 1.8.0 | https://radicle.dev/ | zenobit |  |
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdbus-cpp | 2.1.0 | https://github.com/Kistler-Group/sdbus-cpp | zenobit |  |

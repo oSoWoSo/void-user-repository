@@ -145,6 +145,7 @@ on:
         - quickemu
         - quickosdl
         - quickshell+
+        - radicle
         - rgc
         - runkit
         - sdbus-cpp
