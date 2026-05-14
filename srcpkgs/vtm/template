@@ -1,6 +1,6 @@
 # Template file for 'vtm'
 pkgname=vtm
-version=2026.05.01
+version=2026.05.12
 revision=1
 build_style=cmake
 configure_args="-DSTB_INCLUDE_DIR=/usr/include/stb -DBUILD_TESTING=ON"
@@ -12,7 +12,7 @@ maintainer="zenobit <zenobit@disroot.org>"
 license="MIT"
 homepage="https://github.com/directvt/vtm"
 distfiles="https://github.com/directvt/vtm/archive/refs/tags/v${version}.tar.gz"
-checksum=8f4cb2b2c951fa02f4b90f7feddc14448c23cf68cc6e21834f3537bf914a2807
+checksum=3d2e09d5ad81aea4a8a3f47c53e9cf0a6490efefdc475277e5a1877d1be2b042
 
 post_install() {
 	vlicense LICENSE
