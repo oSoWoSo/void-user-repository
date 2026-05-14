@@ -159,6 +159,7 @@ on:
         - vbm
         - Vish
         - vtm
+        - waterfox-bin
         - wpgtk
         - xdg-desktop-portal-cosmic
         - xdg-desktop-portal-hyprland
