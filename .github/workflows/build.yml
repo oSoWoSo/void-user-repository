@@ -558,9 +558,44 @@ jobs:
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
-          REMOVED: ${{ needs.detect.outputs.removed }}
         run: |
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
           "${GITHUB_WORKSPACE}/extra/update-repo" -p
           echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+
+  cleanup:
+    name: Cleanup removed packages
+    needs: detect
+    if: github.event_name == 'push' && needs.detect.outputs.removed != ''
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/osowoso/oco-builder-x86_64:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --platform linux/amd64 --privileged
+    steps:
+      - name: Prepare container
+        run: |
+          xbps-install -Syu xbps
+          xbps-install -yu
+      - name: Checkout this repo
+        run: |
+          git clone "https://github.com/${{ github.repository }}.git" extra
+          cd extra
+          git fetch --no-tags origin "${{ github.sha }}" --depth 1
+          git checkout --detach "${{ github.sha }}"
+      - name: Remove packages from all architectures
+        env:
+          REMOVED: ${{ needs.detect.outputs.removed }}
+          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          cd "${GITHUB_WORKSPACE}/extra"
+          for arch in x86_64 x86_64-musl aarch64 aarch64-musl; do
+            echo "==> Cleaning up ${arch}"
+            ARCH="$arch" BUILDDIR="/tmp/empty-${arch}" ./update-repo -p || \
+              echo "Warning: cleanup failed for ${arch}"
+          done

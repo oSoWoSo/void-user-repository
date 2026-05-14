@@ -352,8 +352,11 @@ do_upload() {
 	_webdav="${SURFER_URL}/_webdav/${ARCH}"
 
 	if ! ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
-		echo 'No packages to upload'
-		return 0
+		if [ -z "${REMOVED:-}" ]; then
+			echo 'No packages to upload'
+			return 0
+		fi
+		echo 'No packages to upload, processing removals only'
 	fi
 
 	_work_dir=$(mktemp -d)
@@ -405,7 +408,7 @@ do_upload() {
 	fi
 
 	echo '==> Updating repository index'
-	xbps-rindex -a ./*.xbps 2>/dev/null || true
+	ls ./*.xbps >/dev/null 2>&1 && xbps-rindex -a ./*.xbps 2>/dev/null || true
 
 	echo '==> Signing repository'
 	printf '%s\n' "$PRIV_KEY" > private.pem
