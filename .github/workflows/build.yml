@@ -170,8 +170,8 @@ on:
         - zen-browser-aarch64-bin
         - zen-browser-bin
         - zig
-# Apply changes in .github/build-REST.yml instead
-# .github/worlfkows/build.yml will be generated from build-REST.yml by CI
+# Apply changes in .github/build.yml.in instead.
+# .github/workflows/build.yml is generated from this file by `update-repo -u`.
 
 permissions:
   contents: write
@@ -194,27 +194,60 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          # Need full history so we can diff against arbitrary base SHAs
+          # (multi-commit pushes, force-pushes, PR bases).
+          fetch-depth: 0
 
       - name: Detect changed packages
         id: detect
+        env:
+          INPUT_ALL: ${{ inputs.all }}
+          INPUT_TEMPLATE: ${{ inputs.template }}
+          INPUT_TEMPLATES: ${{ inputs.templates }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
+          . .github/pkg-helpers.sh
           packages=""
           removed=""
 
-          if [ "${{ inputs.all }}" = "true" ]; then
-            packages=$(find srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
-          elif [ -n "${{ inputs.template }}" ]; then
-            packages="${{ inputs.template }}"
-          elif [ -n "${{ inputs.templates }}" ]; then
-            packages=$(printf '%s ' ${{ inputs.templates }} | sed 's/ $//')
-          elif [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "pull_request" ]; then
-            packages=$(git diff --diff-filter=ACMR --name-only HEAD~1 HEAD -- 'srcpkgs/*/template' \
-              | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
-            removed=$(git diff --name-status HEAD~1 HEAD -- 'srcpkgs/*/template' \
-              | awk '$1=="D"{print $2}' | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+          ZERO_SHA="0000000000000000000000000000000000000000"
+          all_packages() {
+            find srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//'
+          }
+
+          if [ "$INPUT_ALL" = "true" ]; then
+            packages=$(all_packages)
+          elif [ -n "$INPUT_TEMPLATE" ]; then
+            packages="$INPUT_TEMPLATE"
+          elif [ -n "$INPUT_TEMPLATES" ]; then
+            packages=$(printf '%s ' $INPUT_TEMPLATES | sed 's/ $//')
+          elif [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ "$EVENT_NAME" = "pull_request" ]; then
+              BASE_SHA="$PR_BASE_SHA"
+              HEAD_SHA="$PR_HEAD_SHA"
+            else
+              BASE_SHA="$PUSH_BEFORE"
+              HEAD_SHA="$PUSH_AFTER"
+            fi
+            if [ -z "$BASE_SHA" ] || [ "$BASE_SHA" = "$ZERO_SHA" ] \
+                || ! git cat-file -e "$BASE_SHA" 2>/dev/null; then
+              echo "No usable diff base ($BASE_SHA); treating as full build"
+              packages=$(all_packages)
+            else
+              _diff=$(git diff --name-status "$BASE_SHA" "$HEAD_SHA" -- 'srcpkgs/*/template')
+              packages=$(printf '%s\n' "$_diff" \
+                | awk '$1 ~ /^[ACMR]/ {print $2}' \
+                | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+              removed=$(printf '%s\n' "$_diff" \
+                | awk '$1=="D"{print $2}' \
+                | cut -d/ -f2 | sort -u | tr '\n' ' ' | sed 's/ $//')
+            fi
           else
-            packages=$(find srcpkgs -maxdepth 1 -mindepth 1 -type d -printf "%f " | sed 's/ $//')
+            packages=$(all_packages)
           fi
 
           echo "Packages: ${packages:-<none>}"
@@ -225,23 +258,6 @@ jobs:
           if [ -n "$removed" ]; then
             echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
           fi
-
-          pkg_arch_ok() {
-            local pkg="$1" target="$2"
-            local template="srcpkgs/${pkg}/template"
-            [ -f "$template" ] || return 0
-            local archs last="" pat
-            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
-            [ -z "$archs" ] && return 0
-            for pat in $archs; do
-              last="$pat"
-              case "$target" in
-                ${pat#~}) case "$pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
-              esac
-            done
-            case "$last" in ~*) return 0 ;; esac
-            return 1
-          }
 
           arch_needed() {
             local target="$1"
@@ -273,7 +289,10 @@ jobs:
             arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "ubuntu-latest"    "linux/amd64" 1 false
             arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
             needs_native_aarch64 && add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
-            [ -z "$matrix_configs" ] && add_cfg "x86_64" "x86_64" "ubuntu-latest" "linux/amd64" 1 false
+            if [ -z "$matrix_configs" ]; then
+              echo "Warning: no arch matched package list, defaulting to x86_64" >> "$GITHUB_STEP_SUMMARY"
+              add_cfg "x86_64" "x86_64" "ubuntu-latest" "linux/amd64" 1 false
+            fi
           fi
           echo "matrix={\"config\":[${matrix_configs}]}" >> "$GITHUB_OUTPUT"
 
@@ -329,9 +348,11 @@ jobs:
       - name: Lint templates
         if: matrix.config.arch == 'x86_64'
         continue-on-error: true
+        env:
+          PACKAGES: ${{ needs.detect.outputs.packages }}
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          packages="${{ needs.detect.outputs.packages }}"
+          packages="$PACKAGES"
           cd /void-packages
 
           for template_name in $packages; do
@@ -349,65 +370,9 @@ jobs:
           done
 
       - name: Build packages
-        run: |
-          export PATH="/opt/xbps/usr/bin/:$PATH"
-          cd /void-packages
-          packages="${{ needs.detect.outputs.packages }}"
-
-          arch=""
-          cross=false
-          if [ "$BOOTSTRAP" != "$ARCH" ]; then
-            arch="-a $ARCH"
-            case "$ARCH" in aarch64*) cross=true ;; esac
-          fi
-
-          if [ "$TEST" = 1 ]; then
-            test="-Q"
-          fi
-
-          pkg_arch_ok() {
-            local pkg="$1" target="$2"
-            local template="srcpkgs/${pkg}/template"
-            [ -f "$template" ] || return 0
-            local archs last="" pat
-            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
-            [ -z "$archs" ] && return 0
-            for pat in $archs; do
-              last="$pat"
-              case "$target" in
-                ${pat#~})
-                  case "$pat" in ~*) return 1 ;; *) return 0 ;; esac
-                  ;;
-              esac
-            done
-            case "$last" in ~*) return 0 ;; esac
-            return 1
-          }
-
-          echo "==> Resolving dependencies for: $packages"
-          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $packages)
-
-          echo "==> Build order with dependencies:"
-          echo "$PKGS"
-          echo
-
-          for pkg in ${PKGS}; do
-            if ! pkg_arch_ok "$pkg" "${ARCH}"; then
-              echo "==> Skipping ${pkg}: not available for ${ARCH}"
-              continue
-            fi
-            if [ "$cross" = "true" ] && grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
-              echo "==> Skipping ${pkg}: nocross (built natively)"
-              continue
-            fi
-            if [ "$NATIVE" = "true" ] && ! grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
-              echo "==> Skipping ${pkg}: not nocross (built in cross job)"
-              continue
-            fi
-            echo "==> Building ${pkg}"
-            sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
-            echo
-          done
+        env:
+          PACKAGES: ${{ needs.detect.outputs.packages }}
+        run: sh "${GITHUB_WORKSPACE}/extra/.github/build-packages.sh"
 
   build:
     name: Build and publish packages
@@ -460,68 +425,9 @@ jobs:
 
       - name: Build packages
         id: build
-        run: |
-          export PATH="/opt/xbps/usr/bin/:$PATH"
-          cd /void-packages
-          packages="${{ needs.detect.outputs.packages }}"
-
-          arch=""
-          cross=false
-          if [ "$BOOTSTRAP" != "$ARCH" ]; then
-            arch="-a $ARCH"
-            case "$ARCH" in aarch64*) cross=true ;; esac
-          fi
-
-          if [ "$TEST" = 1 ]; then
-            test="-Q"
-          fi
-
-          pkg_arch_ok() {
-            local pkg="$1" target="$2"
-            local template="srcpkgs/${pkg}/template"
-            [ -f "$template" ] || return 0
-            local archs last="" pat
-            archs=$(grep -m1 '^archs=' "$template" | sed 's/^archs=//;s/"//g')
-            [ -z "$archs" ] && return 0
-            for pat in $archs; do
-              last="$pat"
-              case "$target" in
-                ${pat#~})
-                  case "$pat" in ~*) return 1 ;; *) return 0 ;; esac
-                  ;;
-              esac
-            done
-            case "$last" in ~*) return 0 ;; esac
-            return 1
-          }
-
-          echo "==> Resolving dependencies for: $packages"
-          PKGS=$(sudo -Eu builder ./xbps-src $test sort-dependencies $packages)
-
-          echo "==> Build order with dependencies:"
-          echo "$PKGS"
-          echo
-
-          BUILT=false
-          for pkg in ${PKGS}; do
-            if ! pkg_arch_ok "$pkg" "${ARCH}"; then
-              echo "==> Skipping ${pkg}: not available for ${ARCH}"
-              continue
-            fi
-            if [ "$cross" = "true" ] && grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
-              echo "==> Skipping ${pkg}: nocross (built natively)"
-              continue
-            fi
-            if [ "$NATIVE" = "true" ] && ! grep -q '^nocross=' "srcpkgs/${pkg}/template" 2>/dev/null; then
-              echo "==> Skipping ${pkg}: not nocross (built in cross job)"
-              continue
-            fi
-            echo "==> Building ${pkg}"
-            sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $test pkg "${pkg}"
-            BUILT=true
-            echo
-          done
-          echo "built=${BUILT}" >> "$GITHUB_OUTPUT"
+        env:
+          PACKAGES: ${{ needs.detect.outputs.packages }}
+        run: sh "${GITHUB_WORKSPACE}/extra/.github/build-packages.sh"
 
       - name: Sign packages
         if: steps.build.outputs.built == 'true'
@@ -540,8 +446,10 @@ jobs:
           fi
 
           echo "==> Writing private key"
-          printf "%s\n" "$PRIV_KEY" > private.pem
-          chmod 600 private.pem
+          trap 'rm -f private.pem' EXIT INT TERM
+          # umask 077 before write closes the world-readable window that
+          # `printf > file; chmod 600` leaves open on shared CI runners.
+          ( umask 077 && printf "%s\n" "$PRIV_KEY" > private.pem )
 
           echo "==> Signing individual packages"
           xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
@@ -601,3 +509,42 @@ jobs:
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           ./update-repo -p
           echo "Pruned from https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+
+  pages:
+    name: Regenerate website
+    needs: [build, prune]
+    # always() is required because `prune` is gated on detect.outputs.removed
+    # and may be skipped; without it the default `success()` would skip pages
+    # on any skipped dependency. We then explicitly require that AT LEAST one
+    # of build/prune actually succeeded -- pure-skip should not republish.
+    if: always() && (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && (needs.build.result == 'success' || needs.prune.result == 'success')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout latest main
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Install pandoc
+        run: sudo apt-get install -y pandoc
+
+      - name: Regenerate and upload website
+        env:
+          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
+        run: |
+          ./update-repo -w
+          echo "Published to https://repo.osowoso.org/" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deploy to page branch
+        env:
+          TOKEN: ${{ secrets.WORKFLOWS }}
+        run: |
+          cd docs
+          git init
+          git config user.name "oSoWoso-bot"
+          git config user.email "osowoso@disroot.org"
+          git checkout -b page
+          git add .
+          git commit -m "Deploy: $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push --force "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}.git" page

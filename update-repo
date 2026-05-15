@@ -12,14 +12,15 @@ SRCPKGS='srcpkgs'
 TEMPLATES_LIST='.github/templatesList'
 README='README.md'
 WORKFLOW='.github/workflows/build.yml'
-BUILD_START='.github/build-START.yml'
-BUILD_REST='.github/build-REST.yml'
+BUILD_TEMPLATE='.github/build.yml.in'
 
 SURFER_URL="https://repo.osowoso.org"
 CI_URL="${CI_URL:-https://github.com/oSoWoSo/Void_Community_Repository}"
 SIGNED_BY="zenobit <zenobit@disroot.org>"
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 ARCHES='x86_64 x86_64-musl aarch64 aarch64-musl'
+
+. "${SCRIPT_DIR}/.github/pkg-helpers.sh"
 
 # --- UI helpers (ANSI) ---
 
@@ -36,9 +37,9 @@ _g()  { echo "${GREEN}${1}${NC}"; }
 _b()  { echo "${BLUE}${1}${NC}"; }
 _y()  { echo "${YELLOW}${1}${NC}"; }
 ask() {
-	_y "Press Enter to continue (Ctrl+C to quit)..."
-	echo "$1"
-	read -r _key || true
+	printf '%s%s [Y/n] %s' "$YELLOW" "$1" "$NC"
+	read -r _ans || _ans=y
+	case "$_ans" in [Nn]*) return 1 ;; *) return 0 ;; esac
 }
 
 # --- Core helpers ---
@@ -68,37 +69,111 @@ usage() {
 	EOF
 }
 
+# --- Template field extraction ---
+
+# Single-pass extraction of common template fields.
+# Usage: read_template_fields <template_path>
+# Sets _tpl_version _tpl_homepage _tpl_maintainer _tpl_short_desc _tpl_archs
+read_template_fields() {
+	_tpl_version='' _tpl_homepage='' _tpl_maintainer=''
+	_tpl_short_desc='' _tpl_archs=''
+	while IFS= read -r _ln; do
+		case "$_ln" in
+			version=*)    [ -z "$_tpl_version" ]    && _tpl_version=${_ln#version=} ;;
+			homepage=*)   [ -z "$_tpl_homepage" ]   && _tpl_homepage=${_ln#homepage=} ;;
+			maintainer=*) [ -z "$_tpl_maintainer" ] && _tpl_maintainer=${_ln#maintainer=} ;;
+			short_desc=*) [ -z "$_tpl_short_desc" ] && _tpl_short_desc=${_ln#short_desc=} ;;
+			archs=*)      [ -z "$_tpl_archs" ]      && _tpl_archs=${_ln#archs=} ;;
+		esac
+	done < "$1"
+	_tpl_version=${_tpl_version#\"};   _tpl_version=${_tpl_version%\"}
+	_tpl_homepage=${_tpl_homepage#\"}; _tpl_homepage=${_tpl_homepage%\"}
+	_tpl_maintainer=${_tpl_maintainer#\"}; _tpl_maintainer=${_tpl_maintainer%\"}
+	_tpl_maintainer=${_tpl_maintainer%% <*}
+	_tpl_short_desc=${_tpl_short_desc#\"}; _tpl_short_desc=${_tpl_short_desc%\"}
+	_tpl_archs=${_tpl_archs#\"}; _tpl_archs=${_tpl_archs%\"}
+}
+
 # --- Package helpers ---
 
 pkg_name() {
-	_without_arch="${1%.*}"
-	_ver=$(printf '%s' "$_without_arch" | sed 's/^.*-\([0-9][^-]*\)$/\1/')
-	printf '%s' "${_without_arch%-${_ver}}"
+	# Accept either `name-version_revision` or `name-version_revision.arch`
+	# (callers may or may not have stripped the .xbps suffix already).
+	_pn_in="${1%.xbps}"
+	case "$_pn_in" in *.*) _pn_in="${_pn_in%.*}" ;; esac
+	if command -v xbps-uhelper >/dev/null 2>&1; then
+		_pn_out=$(xbps-uhelper getpkgname "$_pn_in" 2>/dev/null) \
+			&& [ -n "$_pn_out" ] && { printf '%s' "$_pn_out"; return; }
+	fi
+	# Fallback parser: name-version_revision -> drop last `-segment`
+	_pn_ver="${_pn_in##*-}"
+	printf '%s' "${_pn_in%-"${_pn_ver}"}"
 }
 
-pkg_arch_ok() {
-	_pkg="$1" _target="$2"
-	_tpl="${SRCPKGS}/${_pkg}/template"
-	[ -f "$_tpl" ] || return 0
-	_archs=$(grep -m1 '^archs=' "$_tpl" | sed 's/^archs=//;s/"//g')
-	[ -z "$_archs" ] && return 0
-	_last=''
-	for _pat in $_archs; do
-		_last="$_pat"
-		case "$_target" in
-			${_pat#~}) case "$_pat" in ~*) return 1 ;; *) return 0 ;; esac ;;
-		esac
-	done
-	case "$_last" in ~*) return 0 ;; esac
-	return 1
+# List packages PUBLISHED at the public URL for <arch>, one name per line.
+# Prefers `xbps-query` (canonical, validates signature); falls back to
+# fetching the repodata and parsing with python so the website can be
+# regenerated in environments without xbps (e.g. ubuntu-latest in CI).
+# Returns 0 on success (output may be empty -- that means the repo is
+# really empty for this arch), nonzero on failure.
+list_published_pkgs() {
+	_lpp_arch="$1"
+	_lpp_url="${SURFER_URL}/${_lpp_arch}"
+	_lpp_tmp=$(mktemp)
+	_lpp_rc=1
+
+	if command -v xbps-query >/dev/null 2>&1 \
+			&& command -v xbps-uhelper >/dev/null 2>&1; then
+		_lpp_root=$(mktemp -d)
+		# --rootdir on a fresh tempdir + -i + -M ensures we only see
+		# packages from the specified --repository (no xbps.d, no cache,
+		# no installed-pkg state interfering). XBPS_TARGET_ARCH handles
+		# cross-arch listing (aarch64-musl, etc.).
+		XBPS_TARGET_ARCH="$_lpp_arch" \
+			xbps-query --rootdir="$_lpp_root" --repository="$_lpp_url" \
+				-R -M -i -s '' > "$_lpp_tmp" 2>/dev/null
+		_lpp_rc=$?
+		rm -rf "$_lpp_root"
+		if [ "$_lpp_rc" -eq 0 ]; then
+			# Output: "[STATUS] pkgname-version_revision  short_desc"
+			awk '{print $2}' "$_lpp_tmp" | while IFS= read -r _pv; do
+				[ -n "$_pv" ] || continue
+				xbps-uhelper getpkgname "$_pv" 2>/dev/null
+			done
+			rm -f "$_lpp_tmp"
+			return 0
+		fi
+	fi
+
+	# Fallback: fetch the signed repodata and read index.plist with python.
+	if command -v python3 >/dev/null 2>&1; then
+		if curl -fsS -o "$_lpp_tmp" \
+				"${_lpp_url}/${_lpp_arch}-repodata" 2>/dev/null; then
+			python3 "${SCRIPT_DIR}/.github/repodata-list.py" "$_lpp_tmp"
+			_lpp_rc=$?
+		else
+			_lpp_rc=1
+		fi
+	fi
+
+	rm -f "$_lpp_tmp"
+	return "$_lpp_rc"
 }
 
+# Returns 0 on success (printing the file list, possibly empty),
+# nonzero on transport failure (network/auth) so callers can react.
 fetch_remote_list() {
-	curl -s -X PROPFIND "${1}/" \
+	_frl_body=$(curl -fsS -X PROPFIND "${1}/" \
 		-H 'Depth: 1' \
-		-u ":${SURFER_TOKEN}" 2>/dev/null \
+		-u ":${SURFER_TOKEN}" 2>&1)
+	_frl_rc=$?
+	if [ "$_frl_rc" -ne 0 ]; then
+		echo "Error: PROPFIND ${1} failed (rc=${_frl_rc}): ${_frl_body}" >&2
+		return "$_frl_rc"
+	fi
+	printf '%s' "$_frl_body" \
 		| grep -o '<D:href>[^<]*\.xbps</D:href>' \
-		| sed 's|<D:href>||;s|</D:href>||;s|.*/||' || true
+		| sed 's|<D:href>||;s|</D:href>||;s|.*/||'
 }
 
 delete_remote() {
@@ -109,24 +184,31 @@ upload_file() {
 	_file="$1" _dest="$2"
 	echo "  Uploading: $(basename "$_file")"
 	curl -s -T "$_file" "$_dest" -u ":${SURFER_TOKEN}" \
-		|| echo "  Warning: failed to upload $(basename "$_file")"
+		|| { echo "  Warning: failed to upload $(basename "$_file")"; return 1; }
 }
 
 prune_orphans() {
+	# Args:
+	#   $1: remote pkg list (one filename per line)
+	#   $2: optional path to write orphan PACKAGE NAMES (dedup, one per line)
+	_remote_list="$1"
+	_orphans_out="${2:-}"
+	[ -n "$_orphans_out" ] && : > "$_orphans_out"
 	echo '==> Pruning orphan packages (no template in srcpkgs)'
 	_srcpkgs="${SCRIPT_DIR}/${SRCPKGS}"
-	for _remote_pkg in $_remote_list; do
+	printf '%s\n' "$_remote_list" | while IFS= read -r _remote_pkg; do
+		[ -n "$_remote_pkg" ] || continue
 		_pkg=$(pkg_name "${_remote_pkg%.xbps}")
 		[ -d "${_srcpkgs}/${_pkg}" ] && continue
-		echo "  Removing orphan: $_remote_pkg"
-		if curl -sf -o "$_remote_pkg" "${SURFER_URL}/${ARCH}/${_remote_pkg}" \
-				-u ":${SURFER_TOKEN}" 2>/dev/null; then
-			xbps-rindex -r . "$_remote_pkg" || true
-			rm -f "$_remote_pkg" "${_remote_pkg}.sig2"
-		fi
+		echo "  Removing orphan: $_remote_pkg ($_pkg)"
 		delete_remote "${_webdav}/${_remote_pkg}"
 		delete_remote "${_webdav}/${_remote_pkg}.sig2"
+		[ -n "$_orphans_out" ] && printf '%s\n' "$_pkg" >> "$_orphans_out"
 	done
+	if [ -n "$_orphans_out" ] && [ -s "$_orphans_out" ]; then
+		# Dedup in place (multiple .xbps per name from subpackages etc.)
+		sort -u -o "$_orphans_out" "$_orphans_out"
+	fi
 }
 
 # --- Website helpers (from create-web) ---
@@ -198,11 +280,8 @@ generate_readme() {
 		while IFS= read -r _pkg; do
 			_tpl="$SRCPKGS/$_pkg/template"
 			[ -f "$_tpl" ] || continue
-			_homepage=$(grep '^homepage='    "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
-			_version=$(grep  '^version='     "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
-			_maintainer=$(grep '^maintainer=' "$_tpl" | head -n 1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
-			_notes=$(grep    '^archs='       "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
-			echo "| $_pkg | $_version | $_homepage | $_maintainer | $_notes |"
+			read_template_fields "$_tpl"
+			echo "| $_pkg | $_tpl_version | $_tpl_homepage | $_tpl_maintainer | $_tpl_archs |"
 		done < "$TEMPLATES_LIST"
 	} >> "$_tmp"
 
@@ -211,18 +290,27 @@ generate_readme() {
 }
 
 generate_build_yml() {
-	[ -f "$BUILD_START" ]   || fatal "not found: ${BUILD_START}"
-	[ -f "$BUILD_REST" ]    || fatal "not found: ${BUILD_REST}"
+	[ -f "$BUILD_TEMPLATE" ] || fatal "not found: ${BUILD_TEMPLATE}"
 	[ -f "$TEMPLATES_LIST" ] || fatal "not found: ${TEMPLATES_LIST}"
 
 	mkdir -p "$(dirname "$WORKFLOW")"
-	cat "$BUILD_START" > "$WORKFLOW"
+
+	_opts=$(mktemp)
 	while IFS= read -r _pkg; do
 		[ -z "$_pkg" ] && continue
-		echo "        - $_pkg"
-	done < "$TEMPLATES_LIST" >> "$WORKFLOW"
-	cat "$BUILD_REST" >> "$WORKFLOW"
+		printf '        - %s\n' "$_pkg"
+	done < "$TEMPLATES_LIST" > "$_opts"
 
+	awk -v opts="$_opts" '
+		/^[[:space:]]*__TEMPLATE_OPTIONS__[[:space:]]*$/ {
+			while ((getline ln < opts) > 0) print ln
+			close(opts)
+			next
+		}
+		{ print }
+	' "$BUILD_TEMPLATE" > "$WORKFLOW"
+
+	rm -f "$_opts"
 	echo "build.yml: updated"
 }
 
@@ -268,6 +356,17 @@ build_site() {
 	_build_main_index "$_title"
 	generate_arch_pages
 	_g "Finished"
+
+	if [ -n "${SURFER_TOKEN:-}" ]; then
+		_webdav="${SURFER_URL}/_webdav"
+		echo '==> Uploading website assets'
+		_ws_failed=0
+		for _file in "${SCRIPT_DIR}/docs"/*; do
+			[ -f "$_file" ] || continue
+			upload_file "$_file" "${_webdav}/$(basename "$_file")" || _ws_failed=1
+		done
+		[ "$_ws_failed" -eq 0 ] || echo '==> Warning: some website asset uploads failed'
+	fi
 }
 
 generate_arch_pages() {
@@ -298,6 +397,28 @@ generate_arch_pages() {
 			fi
 		done
 
+		# Determine which packages are actually PUBLISHED for this arch.
+		# Source of truth: the public URL (repo.osowoso.org/${arch}/),
+		# read via `list_published_pkgs` which prefers xbps-query and
+		# falls back to fetching+parsing the repodata.
+		#
+		# _have_remote=1: authoritative listing (even if empty) -- pages
+		# show only the intersection of srcpkgs and what's published.
+		# _have_remote='':  listing unavailable -- fall back to showing
+		# every compatible template, with a warning.
+		_have_remote=''
+		_remote_names=''
+		_lpf=$(mktemp)
+		# Capture list_published_pkgs's exit BEFORE the pipe to sort,
+		# otherwise sort's success would mask a transport/parse failure.
+		if list_published_pkgs "$_arch" > "$_lpf"; then
+			_have_remote=1
+			_remote_names=$(sort -u "$_lpf")
+		else
+			_y "Warning: could not list published packages for ${_arch}; rendering full template list"
+		fi
+		rm -f "$_lpf"
+
 		{
 			printf '<table>\n<thead><tr>\n'
 			printf '  <th>package</th><th>version</th><th>homepage</th><th>maintainer</th><th>description</th>\n'
@@ -309,13 +430,14 @@ generate_arch_pages() {
 				_tpl="${SRCPKGS}/${_pkg}/template"
 				[ -f "$_tpl" ] || continue
 
-				_version=$(grep '^version='    "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
-				_homepage=$(grep '^homepage='   "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
-				_maintainer=$(grep '^maintainer=' "$_tpl" | head -n 1 | cut -d= -f2- | sed 's/ <.*//' | tr -d '"')
-				_short_desc=$(grep '^short_desc=' "$_tpl" | head -n 1 | cut -d= -f2- | tr -d '"')
+				if [ "$_have_remote" = 1 ]; then
+					printf '%s\n' "$_remote_names" | grep -qx "$_pkg" || continue
+				fi
+
+				read_template_fields "$_tpl"
 
 				printf '<tr><td><strong>%s</strong></td><td>%s</td><td><a href="%s">%s</a></td><td>%s</td><td>%s</td></tr>\n' \
-					"$_pkg" "$_version" "$_homepage" "$_homepage" "$_maintainer" "$_short_desc"
+					"$_pkg" "$_tpl_version" "$_tpl_homepage" "$_tpl_homepage" "$_tpl_maintainer" "$_tpl_short_desc"
 				_pkg_count=$((_pkg_count + 1))
 			done
 
@@ -344,6 +466,13 @@ generate_arch_pages() {
 
 		rm -f "$_nav_tmp" "$_pkg_tmp" "$_svg_tmp"
 		echo "  Generated ($_pkg_count packages): docs/${_arch}/index.html"
+
+		if [ -n "${SURFER_TOKEN:-}" ]; then
+			_webdav_arch="${SURFER_URL}/_webdav/${_arch}"
+			curl -s -X MKCOL "${_webdav_arch}/" -u ":${SURFER_TOKEN}" || true
+			upload_file "$_out" "${_webdav_arch}/index.html" \
+				|| echo "  Warning: failed to upload ${_arch}/index.html"
+		fi
 	done
 }
 
@@ -374,65 +503,102 @@ do_upload() {
 	curl -s -X MKCOL "${_webdav}/" -u ":${SURFER_TOKEN}" || true
 
 	echo '==> Fetching remote package list'
-	_remote_list=$(fetch_remote_list "$_webdav")
+	if ! _remote_list=$(fetch_remote_list "$_webdav"); then
+		fatal 'PROPFIND failed; refusing to upload with unknown remote state'
+	fi
+	[ -z "$_remote_list" ] && echo '  Note: remote package list is empty (repo empty or first run)'
 
-	cd "$_work_dir" || fatal "Cannot cd to $_work_dir"
+	# Run all temp-dir work in a subshell so cleanup is guaranteed on any exit.
+	(
+		cd "$_work_dir" || exit 1
 
-	echo '==> Downloading repodata'
-	curl -sf -o "${ARCH}-repodata" "${SURFER_URL}/${ARCH}/${ARCH}-repodata" \
-		-u ":${SURFER_TOKEN}" 2>/dev/null || true
+		echo '==> Downloading repodata'
+		_repodata_http=$(curl -sS -o "${ARCH}-repodata" \
+			-w '%{http_code}' \
+			"${SURFER_URL}/${ARCH}/${ARCH}-repodata" \
+			-u ":${SURFER_TOKEN}" 2>/dev/null) || _repodata_http=0
+		case "$_repodata_http" in
+			200) ;;
+			404)
+				echo '==> No repodata yet (first run); starting fresh'
+				rm -f "${ARCH}-repodata"
+				;;
+			*)
+				rm -f "${ARCH}-repodata"
+				echo "==> Error: repodata fetch returned HTTP ${_repodata_http}" >&2
+				exit 1
+				;;
+		esac
 
-	if ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
-		cp "${_builddir}"/*.xbps . 2>/dev/null || true
-		cp "${_builddir}"/*.xbps.sig2 . 2>/dev/null || true
+		if ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
+			cp "${_builddir}"/*.xbps . 2>/dev/null || true
+			cp "${_builddir}"/*.xbps.sig2 . 2>/dev/null || true
 
-		echo '==> Cleaning old package versions from remote'
-		for _new_pkg in "${_builddir}"/*.xbps; do
-			[ -f "$_new_pkg" ] || continue
-			_new_basename=$(basename "$_new_pkg")
-			_name=$(pkg_name "${_new_basename%.xbps}")
+			echo '==> Cleaning old package versions from remote'
+			for _new_pkg in "${_builddir}"/*.xbps; do
+				[ -f "$_new_pkg" ] || continue
+				_new_basename=$(basename "$_new_pkg")
+				_name=$(pkg_name "${_new_basename%.xbps}")
 
-			_fmt_list=$(printf '%s\n' $_remote_list)
-			echo "$_fmt_list" | grep "^${_name}-[0-9]" | while IFS= read -r _old_pkg; do
-				[ "$_old_pkg" = "$_new_basename" ] && continue
-				echo "  Deleting old: $_old_pkg"
-				delete_remote "${_webdav}/${_old_pkg}"
-				delete_remote "${_webdav}/${_old_pkg}.sig2"
+				# Shell glob match treats '+', '.', etc. literally -- unlike grep.
+				printf '%s\n' "$_remote_list" | while IFS= read -r _old_pkg; do
+					case "$_old_pkg" in
+						"${_name}-"[0-9]*) ;;
+						*) continue ;;
+					esac
+					# Also reject names that share a common prefix
+					# (e.g. "foo-3.0" must not match for _name="fo").
+					_old_pkg_name=$(pkg_name "${_old_pkg%.xbps}")
+					[ "$_old_pkg_name" = "$_name" ] || continue
+					[ "$_old_pkg" = "$_new_basename" ] && continue
+					echo "  Deleting old: $_old_pkg"
+					delete_remote "${_webdav}/${_old_pkg}"
+					delete_remote "${_webdav}/${_old_pkg}.sig2"
+				done
 			done
+		else
+			echo '==> No new packages to upload'
+		fi
+
+		prune_orphans "$_remote_list" "${PWD}/orphans.txt"
+
+		if [ -s "${PWD}/orphans.txt" ] && [ -f "${ARCH}-repodata" ]; then
+			echo '==> Stripping orphan entries from local repodata'
+			if command -v python3 >/dev/null 2>&1; then
+				# xargs avoids unquoted-expansion globbing on orphan names
+				xargs python3 "${SCRIPT_DIR}/.github/repodata-strip.py" \
+					"${ARCH}-repodata" < "${PWD}/orphans.txt" \
+					|| echo '  Warning: repodata-strip failed; index may reference deleted packages' >&2
+			else
+				echo '  Warning: python3 not found; index will keep references to deleted packages' >&2
+			fi
+		fi
+
+		if ls ./*.xbps 1>/dev/null 2>&1; then
+			echo '==> Updating repository index'
+			xbps-rindex -a ./*.xbps 2>/dev/null || true
+		fi
+
+		echo '==> Signing repository'
+		# Restrictive umask before write avoids a world-readable window
+		# between create-with-default-umask and chmod 600.
+		trap 'rm -f private.pem' EXIT INT TERM
+		( umask 077 && printf '%s\n' "$PRIV_KEY" > private.pem )
+		xbps-rindex -s --signedby "$SIGNED_BY" --privkey private.pem "$PWD"
+		rm -f private.pem
+
+		echo '==> Uploading'
+		_upload_failed=0
+		for _file in ./*.xbps ./*.xbps.sig2 ./*-repodata; do
+			[ -f "$_file" ] || continue
+			_fname=$(basename "$_file")
+			upload_file "$_file" "${_webdav}/${_fname}" || _upload_failed=1
 		done
-	else
-		echo '==> No new packages to upload'
-	fi
-
-	prune_orphans
-
-	if ls ./*.xbps 1>/dev/null 2>&1; then
-		echo '==> Updating repository index'
-		xbps-rindex -a ./*.xbps 2>/dev/null || true
-	fi
-
-	if ! [ -f "${ARCH}-repodata" ]; then
-		echo '==> No repodata, skipping sign and upload'
-		cd "$SCRIPT_DIR"
-		rm -rf "$_work_dir"
-		return 0
-	fi
-
-	echo '==> Signing repository'
-	printf '%s\n' "$PRIV_KEY" > private.pem
-	chmod 600 private.pem
-	xbps-rindex -s --signedby "$SIGNED_BY" --privkey private.pem "$PWD"
-	rm -f private.pem
-
-	echo '==> Uploading'
-	for _file in ./*.xbps ./*.xbps.sig2 ./*-repodata; do
-		[ -f "$_file" ] || continue
-		_fname=$(basename "$_file")
-		upload_file "$_file" "${_webdav}/${_fname}"
-	done
-
-	cd "$SCRIPT_DIR"
+		[ "$_upload_failed" -eq 0 ] || { echo '==> Error: one or more uploads failed'; exit 1; }
+	)
+	_upload_status=$?
 	rm -rf "$_work_dir"
+	[ "$_upload_status" -eq 0 ] || return "$_upload_status"
 	echo "==> Done: ${SURFER_URL}/${ARCH}/"
 }
 
@@ -463,7 +629,7 @@ main() {
 		esac
 	done
 
-	[ "$_do_update$_do_packages$_do_web$_do_archs" = 1 ] ||
+	[ -n "$_do_update$_do_packages$_do_web$_do_archs" ] ||
 		{ usage >&2; return 1; }
 
 	if [ "$_do_update" = 1 ] || [ "$_do_web" = 1 ]; then

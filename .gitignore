@@ -23,3 +23,9 @@
 !/shlibs-update
 !/shlibs_append
 !/shlibs_remove
+
+# Test harness
+!/tests
+
+# Python compile cache (created by .github/repodata-strip.py)
+.github/__pycache__/
