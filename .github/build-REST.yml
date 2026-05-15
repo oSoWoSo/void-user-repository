@@ -386,9 +386,46 @@ jobs:
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
-          REMOVED: ${{ needs.detect.outputs.removed }}
         run: |
           export XBPS_TARGET_ARCH="${XBPS_ARCH}"
           export PATH="/opt/xbps/usr/bin/:$PATH"
           "${GITHUB_WORKSPACE}/extra/update-repo" -p
           echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+
+  prune:
+    name: Prune removed packages
+    needs: [detect, build]
+    if: always() && (github.event_name == 'push' || github.event_name == 'repository_dispatch' || github.event_name == 'workflow_dispatch') && needs.detect.outputs.removed != ''
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/osowoso/oco-builder-x86_64:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86_64-musl, aarch64, aarch64-musl]
+    steps:
+      - name: Prepare container
+        run: |
+          xbps-install -Syu xbps
+          xbps-install -yu
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Prune orphaned packages
+        env:
+          ARCH: ${{ matrix.arch }}
+          XBPS_ARCH: ${{ matrix.arch }}
+          XBPS_TARGET_ARCH: ${{ matrix.arch }}
+          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
+          PRIV_KEY: ${{ secrets.PRIV_KEY }}
+        run: |
+          export PATH="/opt/xbps/usr/bin/:$PATH"
+          export XBPS_TARGET_ARCH="${XBPS_ARCH}"
+          ./update-repo -p
+          echo "Pruned from https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY

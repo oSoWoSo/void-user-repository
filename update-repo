@@ -368,11 +368,6 @@ do_upload() {
 	_builddir="${BUILDDIR:-$(pwd)}"
 	_webdav="${SURFER_URL}/_webdav/${ARCH}"
 
-	if ! ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
-		echo 'No packages to upload'
-		return 0
-	fi
-
 	_work_dir=$(mktemp -d)
 
 	curl -s -X MKCOL "${_webdav}/" -u ":${SURFER_TOKEN}" || true
@@ -386,28 +381,41 @@ do_upload() {
 	curl -sf -o "${ARCH}-repodata" "${SURFER_URL}/${ARCH}/${ARCH}-repodata" \
 		-u ":${SURFER_TOKEN}" 2>/dev/null || true
 
-	cp "${_builddir}"/*.xbps . 2>/dev/null || true
-	cp "${_builddir}"/*.xbps.sig2 . 2>/dev/null || true
+	if ls "${_builddir}"/*.xbps 1>/dev/null 2>&1; then
+		cp "${_builddir}"/*.xbps . 2>/dev/null || true
+		cp "${_builddir}"/*.xbps.sig2 . 2>/dev/null || true
 
-	echo '==> Cleaning old package versions from remote'
-	for _new_pkg in "${_builddir}"/*.xbps; do
-		[ -f "$_new_pkg" ] || continue
-		_new_basename=$(basename "$_new_pkg")
-		_name=$(pkg_name "${_new_basename%.xbps}")
+		echo '==> Cleaning old package versions from remote'
+		for _new_pkg in "${_builddir}"/*.xbps; do
+			[ -f "$_new_pkg" ] || continue
+			_new_basename=$(basename "$_new_pkg")
+			_name=$(pkg_name "${_new_basename%.xbps}")
 
-		_fmt_list=$(printf '%s\n' $_remote_list)
-		echo "$_fmt_list" | grep "^${_name}-[0-9]" | while IFS= read -r _old_pkg; do
-			[ "$_old_pkg" = "$_new_basename" ] && continue
-			echo "  Deleting old: $_old_pkg"
-			delete_remote "${_webdav}/${_old_pkg}"
-			delete_remote "${_webdav}/${_old_pkg}.sig2"
+			_fmt_list=$(printf '%s\n' $_remote_list)
+			echo "$_fmt_list" | grep "^${_name}-[0-9]" | while IFS= read -r _old_pkg; do
+				[ "$_old_pkg" = "$_new_basename" ] && continue
+				echo "  Deleting old: $_old_pkg"
+				delete_remote "${_webdav}/${_old_pkg}"
+				delete_remote "${_webdav}/${_old_pkg}.sig2"
+			done
 		done
-	done
+	else
+		echo '==> No new packages to upload'
+	fi
 
 	prune_orphans
 
-	echo '==> Updating repository index'
-	xbps-rindex -a ./*.xbps 2>/dev/null || true
+	if ls ./*.xbps 1>/dev/null 2>&1; then
+		echo '==> Updating repository index'
+		xbps-rindex -a ./*.xbps 2>/dev/null || true
+	fi
+
+	if ! [ -f "${ARCH}-repodata" ]; then
+		echo '==> No repodata, skipping sign and upload'
+		cd "$SCRIPT_DIR"
+		rm -rf "$_work_dir"
+		return 0
+	fi
 
 	echo '==> Signing repository'
 	printf '%s\n' "$PRIV_KEY" > private.pem
@@ -422,6 +430,7 @@ do_upload() {
 		upload_file "$_file" "${_webdav}/${_fname}"
 	done
 
+	cd "$SCRIPT_DIR"
 	rm -rf "$_work_dir"
 	echo "==> Done: ${SURFER_URL}/${ARCH}/"
 }
