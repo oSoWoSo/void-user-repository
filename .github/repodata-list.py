@@ -13,9 +13,28 @@ Exit status 0 on success (output may be empty if the index is empty),
 
 from __future__ import annotations
 
+import io
 import plistlib
+import subprocess
 import sys
 import tarfile
+
+
+def _zstd_decompress(path: str) -> bytes:
+    # Python's stdlib lacks zstd before 3.14, and xbps writes zstd by
+    # default. Shell out to the `zstd` CLI -- universally available via
+    # the `zstd` package on every relevant distro.
+    try:
+        return subprocess.check_output(["zstd", "-dc", "--", path])
+    except FileNotFoundError:
+        sys.stderr.write(
+            "error: zstd repodata detected but the `zstd` CLI is not "
+            "installed (apt install zstd)\n"
+        )
+        sys.exit(2)
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(f"error: zstd decompression failed: {e}\n")
+        sys.exit(1)
 
 
 def open_tar_any(path: str) -> tarfile.TarFile:
@@ -26,8 +45,7 @@ def open_tar_any(path: str) -> tarfile.TarFile:
     if magic[:3] == b"BZh":
         return tarfile.open(path, mode="r:bz2")
     if magic[:4] == b"\x28\xb5\x2f\xfd":
-        sys.stderr.write("error: zstd-compressed repodata is not supported\n")
-        sys.exit(2)
+        return tarfile.open(fileobj=io.BytesIO(_zstd_decompress(path)), mode="r:")
     return tarfile.open(path, mode="r:")
 
 

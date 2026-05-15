@@ -311,6 +311,43 @@ open("index.plist","wb").write(plistlib.dumps({
 	python3 "$SCRIPT_DIR/.github/repodata-list.py" "$_wd/garbage" >/dev/null 2>&1; _rc=$?
 	it 'garbage input: rc 1';      assert_rc "$_rc" 1
 
+	# zstd-compressed repodata (only if zstd CLI is on PATH -- mirror CI)
+	if command -v zstd >/dev/null 2>&1; then
+		(
+			cd "$_wd" || exit 1
+			python3 -c '
+import plistlib
+open("index.plist","wb").write(plistlib.dumps({
+    "zst-a": {"v":1}, "zst-b": {"v":2},
+}, fmt=plistlib.FMT_XML))
+'
+			tar -cf zst.tar index.plist
+			zstd -q -o zst-repodata zst.tar
+			python3 "$SCRIPT_DIR/.github/repodata-list.py" zst-repodata | sort | tr '\n' ','
+		) > "$_wd/out"
+		it 'zstd input: lists all entries'
+		assert_eq "$(cat "$_wd/out")" 'zst-a,zst-b,'
+
+		# Strip + roundtrip through zstd must keep the file zstd-compressed
+		(
+			cd "$_wd" || exit 1
+			python3 "$SCRIPT_DIR/.github/repodata-strip.py" zst-repodata zst-a >/dev/null
+			# Magic check: zstd is \x28\xb5\x2f\xfd
+			head -c 4 zst-repodata | od -An -tx1 | tr -d ' \n'
+		) > "$_wd/out"
+		it 'zstd strip: output is still zstd'
+		assert_eq "$(cat "$_wd/out")" '28b52ffd'
+
+		(
+			cd "$_wd" || exit 1
+			python3 "$SCRIPT_DIR/.github/repodata-list.py" zst-repodata | tr '\n' ','
+		) > "$_wd/out"
+		it 'zstd strip: surviving entry is correct'
+		assert_eq "$(cat "$_wd/out")" 'zst-b,'
+	else
+		echo '  (skipped: zstd CLI not on PATH)'
+	fi
+
 	rm -rf "$_wd"
 else
 	echo '  (skipped: python3 not on PATH)'

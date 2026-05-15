@@ -17,27 +17,58 @@ from __future__ import annotations
 import io
 import os
 import plistlib
+import subprocess
 import sys
 import tarfile
 
 INDEX_FILES = {"index.plist", "index-files.plist"}
 
 
-def open_tar_any(path: str) -> tarfile.TarFile:
-    """Open a tar that may be plain, gzip, or bzip2. xbps uses plain tar,
-    but tolerate older variants in case the server has one of those.
-    """
+def _zstd_decompress(path: str) -> bytes:
+    try:
+        return subprocess.check_output(["zstd", "-dc", "--", path])
+    except FileNotFoundError:
+        sys.stderr.write(
+            "error: zstd repodata detected but the `zstd` CLI is not "
+            "installed (apt install zstd)\n"
+        )
+        sys.exit(2)
+    except subprocess.CalledProcessError as e:
+        sys.stderr.write(f"error: zstd decompression failed: {e}\n")
+        sys.exit(1)
+
+
+def _zstd_compress(data: bytes) -> bytes:
+    try:
+        p = subprocess.run(
+            ["zstd", "-c"], input=data, capture_output=True, check=True
+        )
+    except FileNotFoundError:
+        sys.stderr.write("error: `zstd` CLI not found for re-compression\n")
+        sys.exit(2)
+    return p.stdout
+
+
+def detect_format(path: str) -> str:
+    """Returns 'gz', 'bz2', 'zstd', or 'tar' (uncompressed)."""
     with open(path, "rb") as f:
         magic = f.read(6)
     if magic[:2] == b"\x1f\x8b":
-        return tarfile.open(path, mode="r:gz")
+        return "gz"
     if magic[:3] == b"BZh":
-        return tarfile.open(path, mode="r:bz2")
+        return "bz2"
     if magic[:4] == b"\x28\xb5\x2f\xfd":
-        sys.stderr.write(
-            "error: zstd-compressed repodata is not supported by this tool\n"
-        )
-        sys.exit(2)
+        return "zstd"
+    return "tar"
+
+
+def open_tar_any(path: str, fmt: str) -> tarfile.TarFile:
+    if fmt == "gz":
+        return tarfile.open(path, mode="r:gz")
+    if fmt == "bz2":
+        return tarfile.open(path, mode="r:bz2")
+    if fmt == "zstd":
+        return tarfile.open(fileobj=io.BytesIO(_zstd_decompress(path)), mode="r:")
     return tarfile.open(path, mode="r:")
 
 
@@ -53,13 +84,10 @@ def main() -> int:
         sys.stderr.write(f"error: not a file: {repodata}\n")
         return 1
 
-    # Detect compression mode for round-trip write
-    with open(repodata, "rb") as f:
-        magic = f.read(2)
-    write_mode = "w:gz" if magic == b"\x1f\x8b" else "w:"
+    fmt = detect_format(repodata)
 
     members: list[tuple[tarfile.TarInfo, bytes]] = []
-    with open_tar_any(repodata) as tf:
+    with open_tar_any(repodata, fmt) as tf:
         for m in tf.getmembers():
             extracted = tf.extractfile(m)
             data = extracted.read() if extracted is not None else b""
@@ -94,11 +122,29 @@ def main() -> int:
         print("  no matching entries in repodata; nothing to do")
         return 0
 
+    # Build the new (uncompressed) tar in memory, then re-apply the
+    # original compression so the on-wire format is preserved.
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:") as tf:
+        for m, data in rewritten:
+            tf.addfile(m, io.BytesIO(data))
+    raw = buf.getvalue()
+
+    if fmt == "zstd":
+        out_bytes = _zstd_compress(raw)
+    elif fmt == "gz":
+        import gzip
+        out_bytes = gzip.compress(raw)
+    elif fmt == "bz2":
+        import bz2
+        out_bytes = bz2.compress(raw)
+    else:
+        out_bytes = raw
+
     tmp = repodata + ".tmp"
     try:
-        with tarfile.open(tmp, mode=write_mode) as tf:
-            for m, data in rewritten:
-                tf.addfile(m, io.BytesIO(data))
+        with open(tmp, "wb") as f:
+            f.write(out_bytes)
         os.replace(tmp, repodata)
     except Exception:
         if os.path.exists(tmp):
