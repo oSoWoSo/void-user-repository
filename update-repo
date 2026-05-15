@@ -16,6 +16,7 @@ BUILD_START='.github/build-START.yml'
 BUILD_REST='.github/build-REST.yml'
 
 SURFER_URL="https://repo.osowoso.org"
+CI_URL="${CI_URL:-https://github.com/oSoWoSo/Void_Community_Repository}"
 SIGNED_BY="zenobit <zenobit@disroot.org>"
 SCRIPT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 ARCHES='x86_64 x86_64-musl aarch64 aarch64-musl'
@@ -141,8 +142,8 @@ _build_main_index() {
 		printf '  <li><a href="%s/">%s</a></li>\n' "$_arch" "$_arch" >> "$_nav_arch_tmp"
 	done
 	printf '  <li><a href="https://codeberg.org/osowoso/oco">&#x2934; source</a></li>\n' >> "$_nav_arch_tmp"
-	if [ -n "${REPO_URL:-}" ]; then
-		printf '  <li><a href="%s">CI</a></li>\n' "$REPO_URL" >> "$_nav_arch_tmp"
+	if [ -n "${CI_URL:-}" ]; then
+		printf '  <li><a href="%s">CI</a></li>\n' "$CI_URL" >> "$_nav_arch_tmp"
 	fi
 
 	pandoc README.md -f gfm > "$_readme_tmp"
@@ -328,7 +329,7 @@ generate_arch_pages() {
 			-e 's|__CSS_URL__|../style.css|g' \
 			-e 's|__HOME_URL__|../index.html|g' \
 			-e "s|__REPO_URL__|${_repo_url}|g" \
-			-e "s|__GIT_CI_URL__|${REPO_URL:-${SURFER_URL}}|g" \
+			-e "s|__GIT_CI_URL__|${CI_URL}|g" \
 			-e 's|__FAVICON__|<link rel="icon" href="../favicon.ico" />|g' \
 			"$_template" \
 		| awk \
