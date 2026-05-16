@@ -3,6 +3,7 @@ brave-browser-arm-bin
 brave-browser-bin
 brow6el
 btrfs-progs
+clitest
 corekeyboard
 cosmic-applets
 cosmic-applibrary
@@ -45,6 +46,7 @@ gh-lazy
 glaze
 gofer
 gradle
+gum-panel
 helium-browser-arm-bin
 helium-browser-bin
 hyprcursor
@@ -122,6 +124,7 @@ typobuster
 undelete-btrfs
 vbm
 Vish
+vote
 vtm
 waterfox-bin
 wpgtk

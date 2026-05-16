@@ -75,6 +75,7 @@ Create PR
 | brave-browser-bin | 1.90.122 | https://www.brave.com/ | zenobit | x86_64 |
 | brow6el | 0.3.4 | https://codeberg.org/janantos/brow6el | zenobit | x86_64 |
 | btrfs-progs | 6.17.1 | https://btrfs.wiki.kernel.org/index.php/Main_Page | Enno Boland |  |
+| clitest | 0.5.0 | https://github.com/aureliojargas/clitest | zenobit |  |
 | corekeyboard | 5.0.1 | https://gitlab.com/cubocore/coreapps/corekeyboard | zenobit |  |
 | cosmic-applets | 1.0.12 | https://github.com/pop-os/cosmic-applets | Bella Wagner | x86_64* i686 |
 | cosmic-applibrary | 1.0.12 | https://github.com/pop-os/cosmic-applibrary | Bella Wagner | x86_64* i686 |
@@ -117,6 +118,7 @@ Create PR
 | glaze | 7.6.0 | https://github.com/stephenberry/glaze | zenobit |  |
 | gofer | 0.2.0 | https://codeberg.org/JakeAtLinux/Gofer | zenobit |  |
 | gradle | 9.5.0 | https://gradle.org/ | Bnyro |  |
+| gum-panel | 0.17.0.003 | https://codeberg.org/oSoWoSo/gum | zenobit |  |
 | helium-browser-arm-bin | 0.12.2.1 | https://helium.computer | zenobit | aarch64 |
 | helium-browser-bin | 0.12.2.1 | https://helium.computer | zenobit | x86_64 |
 | hyprcursor | 0.1.13 | https://github.com/hyprwm/hyprcursor | zenobit |  |
@@ -194,6 +196,7 @@ Create PR
 | undelete-btrfs | 1.0 | https://github.com/danthem/undelete-btrfs | zenobit |  |
 | vbm | 1.0.1 | https://codeberg.org/oSoWoSo/vbm | zenobit |  |
 | Vish | 1.1.3 | https://github.com/Lluciocc/Vish | zenobit |  |
+| vote | 0.89 | https://codeberg.org/oSoWoSo/vote | zenobit |  |
 | vtm | 2026.05.12 | https://github.com/directvt/vtm | zenobit |  |
 | waterfox-bin | 6.6.12 | https://www.waterfox.net | zenobit | x86_64 |
 | wpgtk | 6.7.1 | https://github.com/deviantfero/wpgtk/ | zenobit |  |

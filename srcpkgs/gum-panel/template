@@ -1,0 +1,27 @@
+# Template file for 'gum-panel'
+pkgname=gum-panel
+version=0.17.0.003
+revision=1
+build_style=go
+build_helper=qemu
+go_import_path="github.com/charmbracelet/gum"
+go_ldflags="-X main.Version=${version}"
+short_desc="Modified version of gum with panel support"
+maintainer="zenobit <zenobit@disroot.org>"
+license="MIT"
+homepage="https://codeberg.org/oSoWoSo/gum"
+changelog="https://github.com/charmbracelet/gum/releases"
+distfiles="https://codeberg.org/oSoWoSo/gum/archive/${version}.tar.gz"
+checksum=f1f0e837e831f48dbc3fc7444bac189dbf78e91476b93f2c79a52eeccc8e1828
+conflicts=gum
+
+post_install() {
+	vlicense LICENSE
+
+	for shell in bash fish zsh; do
+		vtargetrun ${DESTDIR}/usr/bin/gum completion $shell > gum.${shell}
+		vcompletion gum.${shell} $shell
+	done
+	vtargetrun ${DESTDIR}/usr/bin/gum man > gum.1
+	vman gum.1
+}

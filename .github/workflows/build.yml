@@ -42,6 +42,7 @@ on:
         - brave-browser-bin
         - brow6el
         - btrfs-progs
+        - clitest
         - corekeyboard
         - cosmic-applets
         - cosmic-applibrary
@@ -84,6 +85,7 @@ on:
         - glaze
         - gofer
         - gradle
+        - gum-panel
         - helium-browser-arm-bin
         - helium-browser-bin
         - hyprcursor
@@ -161,6 +163,7 @@ on:
         - undelete-btrfs
         - vbm
         - Vish
+        - vote
         - vtm
         - waterfox-bin
         - wpgtk
