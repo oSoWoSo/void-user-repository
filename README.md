@@ -188,6 +188,8 @@ Create PR
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdkmanager | 0.7.0 | https://gitlab.com/fdroid/sdkmanager | zenobit |  |
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
+| simplex-chat | 6.5.0 | https://simplex.chat | rayfadh | ~i686 ~*-musl |
+| simplex-chat-desktop | 6.5.0 | https://simplex.chat | rayfadh | ~i686 ~*-musl |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | tomlplusplus-devel | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
