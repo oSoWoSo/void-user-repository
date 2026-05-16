@@ -48,4 +48,7 @@ for pkg in $PKGS; do
 done
 
 [ -n "${GITHUB_OUTPUT:-}" ] && printf 'built=%s\n' "$BUILT" >> "$GITHUB_OUTPUT"
-[ "$FAILED" = true ] && exit 1
+if [ "$FAILED" = true ]; then
+	exit 1
+fi
+exit 0
