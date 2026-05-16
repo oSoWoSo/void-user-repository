@@ -110,6 +110,7 @@ Create PR
 | distrobox | 1.8.2.5 | https://distrobox.it/ | zenobit |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | forgejo-runner | 12.10.1 | https://code.forgejo.org/forgejo/runner | zenobit |  |
+| FreeTube | 0.24.0 | https://github.com/FreeTubeApp/FreeTube/tree/development | Bella Viola Wagner | x86_64 |
 | ftxui | 6.1.9 | https://github.com/ArthurSonzogni/FTXUI | zenobit |  |
 | ftxui-devel | 6.1.9 | https://github.com/ArthurSonzogni/FTXUI | zenobit |  |
 | gama | 1.2.1 | https://github.com/termkit/gama | zenobit |  |
