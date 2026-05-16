@@ -1,6 +1,6 @@
 # Template file for 'vote'
 pkgname=vote
-version=0.89
+version=0.90.1
 revision=1
 depends="gum-panel xtools"
 checkdepends="clitest jq perl"
@@ -9,7 +9,7 @@ maintainer="zenobit <zenobit@disroot.org>"
 license="AGPL-3.0-only"
 homepage="https://codeberg.org/oSoWoSo/vote"
 distfiles="https://codeberg.org/oSoWoSo/vote/archive/${version}.tar.gz"
-checksum=bc33d6c864348d02ab462b19ccd1de4b1ef18dfd74f5dce2aed1d582b5212195
+checksum=fcaaa846a90af12dfe0774710c6bb822ff03ca6af41dfc9ce5d0183b40b47c02
 
 do_check() {
 	./run.sh -t
