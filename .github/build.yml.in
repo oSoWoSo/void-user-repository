@@ -298,7 +298,7 @@ jobs:
         run: sh "${GITHUB_WORKSPACE}/extra/.github/build-packages.sh"
 
       - name: Sign packages
-        if: steps.build.outputs.built == 'true'
+        if: always() && steps.build.outputs.built == 'true'
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
           XBPS_ARCH: ${{ matrix.config.arch }}
@@ -326,7 +326,7 @@ jobs:
           rm -f private.pem
 
       - name: Upload
-        if: steps.build.outputs.built == 'true'
+        if: always() && steps.build.outputs.built == 'true'
         working-directory: /void-packages/hostdir/binpkgs
         env:
           ARCH: ${{ matrix.config.arch }}

@@ -24,6 +24,7 @@ echo "$PKGS"
 echo
 
 BUILT=false
+FAILED=false
 for pkg in $PKGS; do
 	if ! pkg_arch_ok "$pkg" "$ARCH"; then
 		echo "==> Skipping ${pkg}: not available for ${ARCH}"
@@ -38,9 +39,13 @@ for pkg in $PKGS; do
 		continue
 	fi
 	echo "==> Building ${pkg}"
-	sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $xbps_test pkg "$pkg"
-	BUILT=true
+	if sudo -Eu builder ./xbps-src -j"$(nproc)" -s $arch $xbps_test pkg "$pkg"; then
+		BUILT=true
+	else
+		FAILED=true
+	fi
 	echo
 done
 
 [ -n "${GITHUB_OUTPUT:-}" ] && printf 'built=%s\n' "$BUILT" >> "$GITHUB_OUTPUT"
+[ "$FAILED" = true ] && exit 1
