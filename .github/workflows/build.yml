@@ -42,6 +42,7 @@ on:
         - brave-browser-bin
         - brow6el
         - btrfs-progs
+        - candy-icons-git
         - clitest
         - corekeyboard
         - cosmic-applets
