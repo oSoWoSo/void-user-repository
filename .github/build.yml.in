@@ -121,10 +121,22 @@ jobs:
           echo "Packages: ${packages:-<none>}"
           echo "Removed: ${removed:-<none>}"
           echo "packages=$packages" >> "$GITHUB_OUTPUT"
-          echo "Build: ${packages}" >> $GITHUB_STEP_SUMMARY
           echo "removed=$removed" >> "$GITHUB_OUTPUT"
+          repo="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+          ref="${GITHUB_REF_NAME}"
+          echo "| Package | version | template |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---------|---------|----------|" >> "$GITHUB_STEP_SUMMARY"
+          for pkg in $packages; do
+            version=$(grep '^version=' "srcpkgs/${pkg}/template" | cut -d '=' -f2)
+            echo "| $pkg | $version | [template](${repo}/blob/${ref}/srcpkgs/${pkg}/template) |" >> "$GITHUB_STEP_SUMMARY"
+          done
           if [ -n "$removed" ]; then
-            echo "Removed: ${removed}" >> $GITHUB_STEP_SUMMARY
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "### Removed" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            for pkg in $removed; do
+              echo "$pkg" >> "$GITHUB_STEP_SUMMARY"
+            done
           fi
 
           arch_needed() {
