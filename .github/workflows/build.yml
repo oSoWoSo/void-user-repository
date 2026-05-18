@@ -116,6 +116,7 @@ on:
         - libspng
         - linuxcommandlibrary
         - linuxcommandlibrary-desktop
+        - llama-cpp
         - lunasvg
         - ly
         - menu-themes
