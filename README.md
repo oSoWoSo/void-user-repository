@@ -106,7 +106,7 @@ Create PR
 | cosmic-wallpapers | 1.0.0 | https://github.com/pop-os/cosmic-wallpapers | Bella Viola Wagner |  |
 | cosmic-workspaces-epoch | 1.0.13 | https://github.com/pop-os/cosmic-workspaces-epoch | Bella Viola Wagner | x86_64* i686 |
 | cwal | 0.8.5 | https://github.com/nitinbhat972/cwal | zenobit |  |
-| dashy | 4.0.8 | https://github.com/Lissy93/dashy | zenobit |  |
+| dashy | 4.1.5 | https://github.com/Lissy93/dashy | zenobit |  |
 | desktop-tui | 0.3.2 | https://github.com/Julien-cpsn/desktop-tui | zenobit |  |
 | distrobox | 1.8.2.5 | https://distrobox.it/ | zenobit |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |

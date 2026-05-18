@@ -1,6 +1,6 @@
 # Template file for 'dashy'
 pkgname=dashy
-version=4.0.8
+version=4.1.5
 revision=1
 hostmakedepends="nodejs yarn"
 depends="nodejs"
@@ -9,7 +9,7 @@ maintainer="zenobit <zenobit@disroot.org>"
 license="MIT"
 homepage="https://github.com/Lissy93/dashy"
 distfiles="https://github.com/Lissy93/dashy/archive/refs/tags/${version}.tar.gz"
-checksum=97fcba7aabe9f720f7eb4a10ef0f701d04148a25d583dd0e0b3a5f17067a4c3f
+checksum=94c10d1d92b86933758fbaa39f11eb948b0d20cc23dcd73425456dfdc6598a3c
 noverifyrdeps=yes
 system_accounts="_dashy"
 _dashy_homedir="/var/lib/dashy"
