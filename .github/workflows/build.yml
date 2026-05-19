@@ -72,6 +72,7 @@ on:
         - cosmic-tweaks
         - cosmic-wallpapers
         - cosmic-workspaces-epoch
+        - crush
         - cwal
         - dashy
         - desktop-tui
