@@ -155,6 +155,7 @@ on:
         - quickosdl
         - quickshell+
         - radicle
+        - raysession
         - rgc
         - runkit
         - sdkmanager
