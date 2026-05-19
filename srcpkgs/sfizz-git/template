@@ -16,6 +16,8 @@ short_desc="SFZ sampler"
 maintainer="Trve_AY <anthonyh@purplehaze.noho.st>"
 license="BSD-2-Clause"
 homepage="https://sfztools.github.io/sfizz/"
+nocross=yes
+
 _sfzlib="4e70dc0bef53b41f2853ed46e26f5911114c92d0"
 _abseil="c2435f8342c2d0ed8101cb43adfd605fdc52dca2"
 _filesystem="8a2edd6d92ed820521d42c94d179462bf06b5ed3"
