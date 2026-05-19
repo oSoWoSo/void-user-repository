@@ -110,6 +110,13 @@ Create PR
 | dashy | 4.1.5 | https://github.com/Lissy93/dashy | zenobit |  |
 | desktop-tui | 0.3.2 | https://github.com/Julien-cpsn/desktop-tui | zenobit |  |
 | distrobox | 1.8.2.5 | https://distrobox.it/ | zenobit |  |
+| dragonfly-reverb | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
+| dragonfly-reverb-clap | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
+| dragonfly-reverb-doc | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
+| dragonfly-reverb-lv2 | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
+| dragonfly-reverb-standalone | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
+| dragonfly-reverb-vst | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
+| dragonfly-reverb-vst3 | 3.2.10 | https://michaelwillis.github.io/dragonfly-reverb | Trve_AY |  |
 | drako | 0.2.10 | https://github.com/lucky7xz/drako | zenobit |  |
 | forgejo-runner | 12.10.1 | https://code.forgejo.org/forgejo/runner | zenobit |  |
 | FreeTube | 0.24.0 | https://github.com/FreeTubeApp/FreeTube/tree/development | Bella Viola Wagner | x86_64 |

@@ -77,6 +77,13 @@ on:
         - dashy
         - desktop-tui
         - distrobox
+        - dragonfly-reverb
+        - dragonfly-reverb-clap
+        - dragonfly-reverb-doc
+        - dragonfly-reverb-lv2
+        - dragonfly-reverb-standalone
+        - dragonfly-reverb-vst
+        - dragonfly-reverb-vst3
         - drako
         - forgejo-runner
         - FreeTube
