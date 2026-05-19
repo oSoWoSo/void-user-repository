@@ -342,17 +342,17 @@ jobs:
           echo "==> Merging free + nonfree"
           [ -d nonfree ] && mv nonfree/*.xbps . 2>/dev/null || true
 
-          trap 'rm -f private.pem' EXIT INT TERM
-          ( umask 077 && printf '%s\n' "$PRIV_KEY" > private.pem )
+          trap 'rm -f /tmp/private.pem' EXIT INT TERM
+          ( umask 077 && printf '%s\n' "$PRIV_KEY" > /tmp/private.pem )
 
           echo "==> Signing packages"
-          xbps-rindex -S --privkey private.pem ./*.xbps
+          xbps-rindex -S --privkey /tmp/private.pem ./*.xbps
 
           echo "==> Updating and signing repo index"
           xbps-rindex -a ./*.xbps
-          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem .
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey /tmp/private.pem .
 
-          rm -f private.pem
+          rm -f /tmp/private.pem
           echo "Published to https://repo.osowoso.org/${XBPS_TARGET_ARCH}/" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Unmount binpkgs
