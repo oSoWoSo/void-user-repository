@@ -169,6 +169,7 @@ Create PR
 | nwg-shell | 0.5.50 | https://nwg-piotr.github.io/nwg-shell | zenobit |  |
 | nwg-shell-config | 0.5.64 | https://nwg-piotr.github.io/nwg-shell/nwg-shell-config | zenobit |  |
 | nwg-shell-wallpapers | 1.5 | https://github.com/nwg-piotr/nwg-shell-wallpapers | zenobit |  |
+| patchance | 1.4.0 | https://raysession.tuxfamily.org/ | Trve_AY |  |
 | pop-fonts | 0.0.0 | https://github.com/pop-os/fonts | Bella Wagner |  |
 | pop-icons | 3.5.1 | https://github.com/pop-os/icon-theme | Bella Wagner |  |
 | pop-launcher | 1.2.7 | https://github.com/pop-os/launcher | Bella Wagner | x86_64* i686 |
