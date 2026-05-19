@@ -200,6 +200,12 @@ Create PR
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
 | simplex-chat | 6.5.0 | https://simplex.chat | rayfadh | ~i686 ~*-musl |
 | simplex-chat-desktop | 6.5.0 | https://simplex.chat | rayfadh | ~i686 ~*-musl |
+| surge-xt | 1.3.4 | https://surge-synthesizer.github.io/ | Trve_AY |  |
+| surge-xt-clap | 1.3.4 | https://surge-synthesizer.github.io/ | Trve_AY |  |
+| surge-xt-common | 1.3.4 | https://surge-synthesizer.github.io/ | Trve_AY |  |
+| surge-xt-lv2 | 1.3.4 | https://surge-synthesizer.github.io/ | Trve_AY |  |
+| surge-xt-standalone | 1.3.4 | https://surge-synthesizer.github.io/ | Trve_AY |  |
+| surge-xt-vst3 | 1.3.4 | https://surge-synthesizer.github.io/ | Trve_AY |  |
 | tdf | 0.5.0 | https://github.com/itsjunetime/tdf | zenobit |  |
 | tomlplusplus | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
 | tomlplusplus-devel | 3.4.0 | https://marzer.github.io/tomlplusplus/ | zenobit |  |
