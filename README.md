@@ -191,6 +191,11 @@ Create PR
 | rgc | 1.1.0 | https://github.com/flameshikari/rgc | zenobit |  |
 | runkit | 1.4.0 | https://github.com/Letdown2491/runkit | zenobit |  |
 | sdkmanager | 0.7.0 | https://gitlab.com/fdroid/sdkmanager | zenobit |  |
+| sfizz-cli | 1.2.3 | https://sfztools.github.io/sfizz/ | Trve_AY |  |
+| sfizz-git | 1.2.3 | https://sfztools.github.io/sfizz/ | Trve_AY |  |
+| sfizz-lib | 1.2.3 | https://sfztools.github.io/sfizz/ | Trve_AY |  |
+| sfizz-lv2 | 1.2.3 | https://sfztools.github.io/sfizz/ | Trve_AY |  |
+| sfizz-vst3 | 1.2.3 | https://sfztools.github.io/sfizz/ | Trve_AY |  |
 | shattered-pixel-dungeon | 3.3.8 | https://github.com/00-Evan/shattered-pixel-dungeon | zenobit |  |
 | simplex-chat | 6.5.0 | https://simplex.chat | rayfadh | ~i686 ~*-musl |
 | simplex-chat-desktop | 6.5.0 | https://simplex.chat | rayfadh | ~i686 ~*-musl |
