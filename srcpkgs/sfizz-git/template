@@ -1,12 +1,16 @@
 # Template file for 'sfizz-git'
 pkgname=sfizz-git
 version=1.2.3
-revision=1
+revision=2
 build_style=cmake
 metapackage=yes
-configure_args="-DSFIZZ_USE_SNDFILE=ON"
-hostmakedepends="pkg-config "
-makedepends="pango-devel cairo-devel jack-devel fontconfig-devel freetype-devel libX11-devel libxcb-devel libxkbcommon-devel libsamplerate-devel libgomp-devel xcb-util-devel xcb-util-keysyms-devel xcb-util-cursor-devel glib-devel zenity libsndfile-devel"
+configure_args="-DSFIZZ_USE_SNDFILE=ON -DBUILD_SHARED_LIBS=ON -DBUILD_TESTING=ON
+ -DWAVPACK_INSTALL_PKGCONFIG_MODULE=ON"
+hostmakedepends="pkg-config ghc"
+makedepends="pango-devel cairo-devel jack-devel fontconfig-devel freetype-devel
+ libX11-devel libxcb-devel libxkbcommon-devel libsamplerate-devel libgomp-devel
+ xcb-util-devel xcb-util-keysyms-devel xcb-util-cursor-devel glib-devel zenity
+ libsndfile-devel ghc-devel"
 depends="jack sfizz-lv2 sfizz-vst3 sfizz-lib sfizz-cli"
 short_desc="SFZ sampler"
 maintainer="Trve_AY <anthonyh@purplehaze.noho.st>"
@@ -61,6 +65,18 @@ checksum="c96d7f41e7b515b67eb0494936af6336026acd14b374df1307935526b242496f
  979adadbd4b32dd34bd57c70480a2fad71709ff5270de01082310c92dd37b3fb
  4be4569dc487ab5170914732c59106dbe0cbadcfbd8f048c23267ba459a554b8"
 
+case "$XBPS_TARGET_MACHINE" in
+	x86_64*|i686*)
+		;;
+	*)
+		configure_args+=" -DSFIZZ_USE_SSE=OFF"
+		;;
+esac
+
+if [ "$XBPS_TARGET_LIBC" = musl ]; then
+	CXXFLAGS+=" -D_LARGEFILE64_SOURCE"
+fi
+
 post_extract() {
 	vsrcextract -C library "${_sfzlib}.tar.gz"
 	vsrcextract -C library/external/abseil-cpp "${_abseil}.tar.gz"
@@ -80,10 +96,6 @@ post_extract() {
 
 pre_build() {
 	sed -i '21s/(/= / ; 21s/)//' plugins/editor/external/vstgui4/vstgui/lib/finally.h
-}
-
-post_install() {
-	vlicense LICENSE
 }
 
 sfizz-lv2_package() {
@@ -107,6 +119,7 @@ sfizz-lib_package() {
 		vmove usr/include
 		vmove usr/lib/libsfizz.so*
 		vmove usr/lib/pkgconfig
+		vlicense LICENSE
 	}
 }
 
