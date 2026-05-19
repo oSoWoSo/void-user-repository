@@ -445,54 +445,58 @@ jobs:
           done
           chown -R builder:builder /void-packages/srcpkgs /void-packages/common
 
+      - name: Mount remote binpkgs via WebDAV
+        env:
+          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
+          ARCH: ${{ matrix.config.arch }}
+        run: |
+          echo user_allow_other >> /etc/fuse.conf
+          mkdir -p /void-packages/hostdir/binpkgs
+          RCLONE_WEBDAV_URL="https://repo.osowoso.org/_webdav/${ARCH}/" \
+          RCLONE_WEBDAV_PASS="$(rclone obscure "$SURFER_TOKEN")" \
+          rclone mount :webdav: /void-packages/hostdir/binpkgs \
+            --daemon \
+            --allow-other \
+            --vfs-cache-mode writes \
+            --uid "$(id -u builder)" \
+            --gid "$(id -g builder)"
+          until mountpoint -q /void-packages/hostdir/binpkgs; do sleep 1; done
+          echo "==> Mounted: $(ls /void-packages/hostdir/binpkgs/*.xbps 2>/dev/null | wc -l) packages already in repo"
+
       - name: Build packages
         id: build
         env:
           PACKAGES: ${{ needs.detect.outputs.packages }}
         run: sh "${GITHUB_WORKSPACE}/extra/.github/build-packages.sh"
 
-      - name: Sign packages
+      - name: Sign and index
         if: always() && steps.build.outputs.built == 'true'
         env:
           PRIV_KEY: ${{ secrets.PRIV_KEY }}
-          XBPS_ARCH: ${{ matrix.config.arch }}
           XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
         working-directory: /void-packages/hostdir/binpkgs/
         run: |
           export PATH="/opt/xbps/usr/bin/:$PATH"
-          export XBPS_TARGET_ARCH="${XBPS_ARCH}"
 
           echo "==> Merging free + nonfree"
-          if [ -d "nonfree" ]; then
-            mv nonfree/*.xbps . 2>/dev/null || true
-          fi
+          [ -d nonfree ] && mv nonfree/*.xbps . 2>/dev/null || true
 
-          echo "==> Writing private key"
           trap 'rm -f private.pem' EXIT INT TERM
-          # umask 077 before write closes the world-readable window that
-          # `printf > file; chmod 600` leaves open on shared CI runners.
-          ( umask 077 && printf "%s\n" "$PRIV_KEY" > private.pem )
+          ( umask 077 && printf '%s\n' "$PRIV_KEY" > private.pem )
 
-          echo "==> Signing individual packages"
-          xbps-rindex -S --privkey private.pem "$PWD"/*.xbps
+          echo "==> Signing packages"
+          xbps-rindex -S --privkey private.pem ./*.xbps
 
-          echo "==> Cleaning up private key"
+          echo "==> Updating and signing repo index"
+          xbps-rindex -a ./*.xbps
+          xbps-rindex -s --signedby "zenobit <zenobit@disroot.org>" --privkey private.pem .
+
           rm -f private.pem
+          echo "Published to https://repo.osowoso.org/${XBPS_TARGET_ARCH}/" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload
-        if: always() && steps.build.outputs.built == 'true'
-        working-directory: /void-packages/hostdir/binpkgs
-        env:
-          ARCH: ${{ matrix.config.arch }}
-          XBPS_ARCH: ${{ matrix.config.arch }}
-          XBPS_TARGET_ARCH: ${{ matrix.config.arch }}
-          PRIV_KEY: ${{ secrets.PRIV_KEY }}
-          SURFER_TOKEN: ${{ secrets.SURFER_TOKEN }}
-        run: |
-          export XBPS_TARGET_ARCH="${XBPS_ARCH}"
-          export PATH="/opt/xbps/usr/bin/:$PATH"
-          "${GITHUB_WORKSPACE}/extra/update-repo" -p
-          echo "Added to https://repo.osowoso.org/${ARCH}/" >> $GITHUB_STEP_SUMMARY
+      - name: Unmount binpkgs
+        if: always()
+        run: fusermount -u /void-packages/hostdir/binpkgs 2>/dev/null || true
 
   prune:
     name: Prune removed packages
