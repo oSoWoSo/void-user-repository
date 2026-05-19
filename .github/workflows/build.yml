@@ -455,12 +455,15 @@ jobs:
           RCLONE_WEBDAV_URL="https://repo.osowoso.org/_webdav/${ARCH}/" \
           RCLONE_WEBDAV_PASS="$(rclone obscure "$SURFER_TOKEN")" \
           rclone mount :webdav: /void-packages/hostdir/binpkgs \
-            --daemon \
             --allow-other \
             --vfs-cache-mode writes \
             --uid "$(id -u builder)" \
-            --gid "$(id -g builder)"
-          until mountpoint -q /void-packages/hostdir/binpkgs; do sleep 1; done
+            --gid "$(id -g builder)" \
+            --log-file /tmp/rclone.log &
+          until mountpoint -q /void-packages/hostdir/binpkgs; do
+            sleep 1
+            kill -0 $! 2>/dev/null || { cat /tmp/rclone.log >&2; exit 1; }
+          done
           echo "==> Mounted: $(ls /void-packages/hostdir/binpkgs/*.xbps 2>/dev/null | wc -l) packages already in repo"
 
       - name: Build packages
