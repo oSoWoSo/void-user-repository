@@ -1,14 +1,16 @@
 # Template file for 'candy-icons-git'
 pkgname=candy-icons-git
 version=0.11.1
-revision=4
+revision=1
 # depends="breeze-icons adwaita-icon-theme hicolor-icon-theme"
 short_desc="Sweet gradient icons, sweet rainbow folders included"
-maintainer="Orphaned <orphan@voidlinux.org>"
+maintainer="Trve_AY <anthonyh@purplehaze.noho.st>"
 license="GPL-3.0-only"
 homepage="https://www.opendesktop.org/p/1305251/"
+
 _candy="278998cb51c68de9d590c84d8fd1625223772792"
 _rainbow="40a5d36e50437901c7eaa1119bb9ae8006e2fe5c"
+
 distfiles="https://github.com/EliverLara/candy-icons/archive/${_candy}.tar.gz
  https://github.com/EliverLara/Sweet-folders/archive/${_rainbow}.tar.gz"
 checksum="2b940ccee268ea8c7a42f674f67a24d005c295b7ca61807a30d8a737f52ab4b8
