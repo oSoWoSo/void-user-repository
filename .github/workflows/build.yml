@@ -324,6 +324,16 @@ jobs:
             return 1
           }
 
+          needs_native_aarch64_musl() {
+            for pkg in $packages; do
+              local template="srcpkgs/${pkg}/template"
+              [ -f "$template" ] || continue
+              grep -q '^nocross=' "$template" || continue
+              pkg_arch_ok "$pkg" "aarch64-musl" && return 0
+            done
+            return 1
+          }
+
           add_cfg() {
             [ -n "$matrix_configs" ] && matrix_configs="${matrix_configs},"
             matrix_configs="${matrix_configs}{\"arch\":\"$1\",\"host\":\"$2\",\"runner\":\"$3\",\"platform\":\"$4\",\"test\":$5,\"native\":$6}"
@@ -336,6 +346,7 @@ jobs:
             arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "ubuntu-latest"    "linux/amd64" 1 false
             arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
             needs_native_aarch64 && add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
+            needs_native_aarch64_musl && add_cfg "aarch64-musl" "aarch64-musl" "ubuntu-24.04-arm" "linux/arm64" 1 true
             if [ -z "$matrix_configs" ]; then
               echo "Warning: no arch matched package list, defaulting to x86_64" >> "$GITHUB_STEP_SUMMARY"
               add_cfg "x86_64" "x86_64" "ubuntu-latest" "linux/amd64" 1 false
