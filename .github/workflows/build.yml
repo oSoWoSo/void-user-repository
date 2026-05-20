@@ -314,6 +314,28 @@ jobs:
             return 1
           }
 
+          needs_cross_aarch64() {
+            local any_nocross=0
+            for pkg in $packages; do
+              local template="srcpkgs/${pkg}/template"
+              [ -f "$template" ] || continue
+              pkg_arch_ok "$pkg" "aarch64" || continue
+              grep -q '^nocross=' "$template" && any_nocross=1
+            done
+            [ "$any_nocross" = 0 ] && arch_needed "aarch64"
+          }
+
+          needs_cross_aarch64_musl() {
+            local any_nocross=0
+            for pkg in $packages; do
+              local template="srcpkgs/${pkg}/template"
+              [ -f "$template" ] || continue
+              pkg_arch_ok "$pkg" "aarch64-musl" || continue
+              grep -q '^nocross=' "$template" && any_nocross=1
+            done
+            [ "$any_nocross" = 0 ] && arch_needed "aarch64-musl"
+          }
+
           needs_native_aarch64() {
             for pkg in $packages; do
               local template="srcpkgs/${pkg}/template"
@@ -342,9 +364,9 @@ jobs:
           matrix_configs=""
           if [ -n "$packages" ]; then
             arch_needed "x86_64"       && add_cfg "x86_64"       "x86_64"      "ubuntu-latest"    "linux/amd64" 1 false
-            arch_needed "aarch64"      && add_cfg "aarch64"      "x86_64"      "ubuntu-latest"    "linux/amd64" 0 false
+            needs_cross_aarch64      && add_cfg "aarch64"      "x86_64"      "ubuntu-latest"    "linux/amd64" 0 false
             arch_needed "x86_64-musl"  && add_cfg "x86_64-musl"  "x86_64-musl" "ubuntu-latest"    "linux/amd64" 1 false
-            arch_needed "aarch64-musl" && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
+            needs_cross_aarch64_musl && add_cfg "aarch64-musl" "x86_64-musl" "ubuntu-latest"    "linux/amd64" 0 false
             needs_native_aarch64 && add_cfg "aarch64" "aarch64" "ubuntu-24.04-arm" "linux/arm64" 1 true
             needs_native_aarch64_musl && add_cfg "aarch64-musl" "aarch64-musl" "ubuntu-24.04-arm" "linux/arm64" 1 true
             if [ -z "$matrix_configs" ]; then
